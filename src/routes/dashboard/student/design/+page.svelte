@@ -1,4 +1,67 @@
 <script lang="ts">
+	// --- SAVE DESIGN → console ---
+
+	function buildDesignPayload() {
+		return {
+			rows,
+			cols,
+			backgroundImage,
+			placedAssets: placedAssets.map((p) => ({
+				instanceId: p.instanceId,
+				assetId: p.asset.id,
+				label: p.asset.label,
+				row: p.row,
+				col: p.col,
+				width: p.asset.width,
+				height: p.asset.height,
+				rotation: p.rotation
+			}))
+		};
+	}
+
+	function saveDesignToConsole() {
+		const payload = buildDesignPayload();
+		console.log('🎨 DESIGN PAYLOAD:', payload);
+		alert('Design logged in de console (open DevTools → Console).');
+	}
+
+	// Tutorial state: mascot speech bubbles
+	let showTutorial = true;
+
+	type TutorialBubble = {
+		title: string;
+		text: string;
+	};
+
+	const mascotBubbles: TutorialBubble[] = [
+		{
+			title: 'Hoi, ik ben je gids!',
+			text: 'Samen gaan we een supergroen speelplein maken. Sleep straks dingen uit de toolbox naar het rooster.'
+		},
+		{
+			title: 'Stap 1 – Sleep spullen',
+			text: 'Pak een boom, bankje of glijbaan vast en sleep het naar de plattegrond. Laat los om het neer te zetten.'
+		},
+		{
+			title: 'Stap 2 – Verplaats en draai',
+			text: 'Je kunt een geplaatst object weer vastpakken om het te verplaatsen. Dubbelklik erop om het te draaien.'
+		},
+		{
+			title: 'Stap 3 – Opruimen en opnieuw',
+			text: 'Met “Delete mode” kun je dingen wegklikken. Met “Reset” begin je helemaal opnieuw, en met “Undo” ga je één stap terug.'
+		}
+	];
+
+	let currentBubble = 0;
+
+	function nextBubble() {
+		currentBubble = (currentBubble + 1) % mascotBubbles.length;
+	}
+
+	function prevBubble() {
+		currentBubble = (currentBubble - 1 + mascotBubbles.length) % mascotBubbles.length;
+	}
+
 	// Asset type
 	type Asset = {
 		id: string;
@@ -10,10 +73,38 @@
 	};
 
 	const assets: Asset[] = [
-		{ id: 'tree', label: 'Boom',     color: '#4ade80', width: 2, height: 2, image: '/placeholder.png' },
-		{ id: 'bench', label: 'Bankje',  color: '#facc15', width: 2, height: 1, image: '/placeholder.png' },
-		{ id: 'slide', label: 'Glijbaan',color: '#60a5fa', width: 1, height: 2, image: '/placeholder.png' },
-		{ id: 'sandbox', label: 'Zandbak', color: '#f97316', width: 2, height: 2, image: '/placeholder.png' }
+		{
+			id: 'tree',
+			label: 'Boom',
+			color: '#4ade80',
+			width: 2,
+			height: 2,
+			image: '/placeholder.png'
+		},
+		{
+			id: 'bench',
+			label: 'Bankje',
+			color: '#facc15',
+			width: 2,
+			height: 1,
+			image: '/placeholder.png'
+		},
+		{
+			id: 'slide',
+			label: 'Glijbaan',
+			color: '#60a5fa',
+			width: 1,
+			height: 2,
+			image: '/placeholder.png'
+		},
+		{
+			id: 'sandbox',
+			label: 'Zandbak',
+			color: '#f97316',
+			width: 2,
+			height: 2,
+			image: '/placeholder.png'
+		}
 	];
 
 	const rows = 18;
@@ -25,8 +116,8 @@
 	type PlacedAsset = {
 		instanceId: number;
 		asset: Asset;
-		row: number;      // 0-based
-		col: number;      // 0-based
+		row: number; // 0-based
+		col: number; // 0-based
 		rotation: number; // 0, 90, 180, 270
 	};
 
@@ -35,26 +126,42 @@
 
 	// history for undo
 	let history: PlacedAsset[][] = [];
+	const MAX_HISTORY = 50;
 
 	// delete mode toggle
 	let deleteMode = false;
 
-	// track drag source: from palette or from already placed asset
-	let dragSource:
+	// drag source type
+	type DragSource =
 		| { type: 'palette'; asset: Asset }
-		| { type: 'placed'; instanceId: number }
-		| null = null;
+		| { type: 'placed'; instanceId: number };
+
+	// track drag source: from palette or from already placed asset
+	let dragSource: DragSource | null = null;
 
 	// ===== helpers =====
 
 	function pushHistory() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
 		history = [...history, snapshot];
+
+		// cap history length to avoid unbounded growth
+		if (history.length > MAX_HISTORY) {
+			history = history.slice(history.length - MAX_HISTORY);
+		}
 	}
 
-	function clampPosition(row: number, col: number, asset: Asset) {
-		const maxRow = rows - asset.height;
-		const maxCol = cols - asset.width;
+	// Clamp position, taking rotation into account
+	function clampPosition(row: number, col: number, asset: Asset, rotation: number) {
+		const normalizedRotation = ((rotation % 360) + 360) % 360;
+		const rotated =
+			normalizedRotation === 90 || normalizedRotation === 270
+				? { width: asset.height, height: asset.width }
+				: { width: asset.width, height: asset.height };
+
+		const maxRow = rows - rotated.height;
+		const maxCol = cols - rotated.width;
+
 		return {
 			row: Math.max(0, Math.min(row, maxRow)),
 			col: Math.max(0, Math.min(col, maxCol))
@@ -66,11 +173,13 @@
 	}
 
 	// ===== drag from palette =====
+
 	function handlePaletteDragStart(asset: Asset) {
 		dragSource = { type: 'palette', asset };
 	}
 
 	// ===== drag existing placed asset =====
+
 	function handlePlacedDragStart(instanceId: number) {
 		dragSource = { type: 'placed', instanceId };
 	}
@@ -85,16 +194,18 @@
 
 	// Drop: either create new (palette) or move existing (placed)
 	function handleDrop(index: number) {
-		if (!dragSource) return;
+		// Snapshot dragSource to satisfy TS and avoid race issues
+		const source = dragSource;
+		if (!source) return;
 
 		const baseRow = Math.floor(index / cols);
 		const baseCol = index % cols;
 
 		pushHistory(); // save state before change
 
-		if (dragSource.type === 'palette') {
-			const asset = dragSource.asset;
-			const { row, col } = clampPosition(baseRow, baseCol, asset);
+		if (source.type === 'palette') {
+			const asset = source.asset;
+			const { row, col } = clampPosition(baseRow, baseCol, asset, 0);
 
 			const placed: PlacedAsset = {
 				instanceId: nextInstanceId++,
@@ -105,13 +216,17 @@
 			};
 
 			placedAssets = [...placedAssets, placed];
-		} else if (dragSource.type === 'placed') {
+		} else if (source.type === 'placed') {
 			placedAssets = placedAssets.map((p) => {
-				if (p.instanceId !== dragSource.instanceId) return p;
-				const { row, col } = clampPosition(baseRow, baseCol, p.asset);
+				if (p.instanceId !== source.instanceId) return p;
+
+				const { row, col } = clampPosition(baseRow, baseCol, p.asset, p.rotation);
 				return { ...p, row, col };
 			});
 		}
+
+		// clear drag source after a successful drop
+		dragSource = null;
 	}
 
 	// click on an asset when delete mode is on
@@ -126,22 +241,28 @@
 	function rotateAsset(instanceId: number) {
 		pushHistory();
 
-		placedAssets = placedAssets.map((p) =>
-			p.instanceId === instanceId
-				? { ...p, rotation: (p.rotation + 90) % 360 }
-				: p
-		);
+		placedAssets = placedAssets.map((p) => {
+			if (p.instanceId !== instanceId) return p;
+
+			const newRotation = (p.rotation + 90) % 360;
+			const { row, col } = clampPosition(p.row, p.col, p.asset, newRotation);
+
+			return { ...p, rotation: newRotation, row, col };
+		});
 	}
 
 	// buttons
+
 	function resetGrid() {
 		if (placedAssets.length === 0) return;
+
 		pushHistory();
 		placedAssets = [];
 	}
 
 	function undo() {
 		if (history.length === 0) return;
+
 		const prev = history[history.length - 1];
 		history = history.slice(0, -1);
 		placedAssets = prev;
@@ -190,14 +311,72 @@
 	<main class="grid-wrapper">
 		<h2 class="grid-title">Jouw ontwerp</h2>
 
+		{#if showTutorial}
+			<div class="tutorial-backdrop">
+				<div class="tutorial-card mascot-card">
+					<div class="tutorial-header">
+						<h3>Hoe werkt de ontwerptool?</h3>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>
+							✕
+						</button>
+					</div>
+
+					<div class="mascot-layout">
+						<div class="mascot-col">
+							<img src="/mascot-hedgehog.png" alt="Groene egel mascotte" class="mascot-image" />
+						</div>
+
+						<div class="bubble-col">
+							<div class="speech-bubble">
+								<h4>{mascotBubbles[currentBubble].title}</h4>
+								<p>{mascotBubbles[currentBubble].text}</p>
+							</div>
+
+							<div class="bubble-controls">
+								<button class="btn secondary" type="button" on:click={prevBubble}>
+									← Vorige
+								</button>
+
+								<span class="bubble-counter">
+									{currentBubble + 1} / {mascotBubbles.length}
+								</span>
+
+								<button class="btn secondary" type="button" on:click={nextBubble}>
+									Volgende →
+								</button>
+							</div>
+
+							<button
+								type="button"
+								class="btn primary mascot-start-btn"
+								on:click={() => (showTutorial = false)}
+							>
+								Ik snap het, laten we ontwerpen! 🎨
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		{/if}
+
 		<!-- control buttons -->
 		<div class="toolbar">
+			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
+				❓ Tutorial
+			</button>
+
+			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
+				💾 Save design (console)
+			</button>
+
 			<button class="btn secondary" type="button" on:click={resetGrid}>
 				🧹 Reset grid
 			</button>
+
 			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
 				↩️ Undo
 			</button>
+
 			<button
 				type="button"
 				class="btn secondary"
@@ -214,7 +393,7 @@
 		>
 			<div class="grid">
 				<!-- grid cells as background / drop targets -->
-				{#each Array(rows * cols) as _, index}
+				{#each Array.from({ length: rows * cols }) as _, index}
 					<div
 						class="grid-cell"
 						on:dragover={handleDragOver}
@@ -223,15 +402,17 @@
 				{/each}
 
 				<!-- placed assets as ONE block spanning multiple cells -->
-				{#each placedAssets as placed}
+				{#each placedAssets as placed (placed.instanceId)}
 					<div
 						class="placed-asset"
 						draggable="true"
 						on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
 						on:dragend={handleDragEnd}
-						style={`grid-column: ${placed.col + 1} / span ${placed.asset.width}; grid-row: ${placed.row + 1} / span ${
-							placed.asset.height
-						}; background-image: url('${placed.asset.image}'); transform: rotate(${placed.rotation}deg);`}
+						style={`grid-column: ${placed.col + 1} / span ${placed.asset.width}; grid-row: ${
+							placed.row + 1
+						} / span ${placed.asset.height}; background-image: url('${
+							placed.asset.image
+						}'); transform: rotate(${placed.rotation}deg);`}
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
@@ -241,8 +422,8 @@
 		</div>
 
 		<p class="hint">
-			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren. Delete-modus + klik
-			verwijdert.
+			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren. Delete-modus +
+			klik verwijdert.
 		</p>
 	</main>
 </div>
@@ -258,6 +439,7 @@
 	}
 
 	/* SIDEBAR */
+
 	.sidebar {
 		background: #f9fafb;
 		border-radius: 1rem;
@@ -276,6 +458,173 @@
 		background: linear-gradient(to right, #f472b6, #fb923c);
 		color: white;
 		text-align: center;
+	}
+
+	/* Backdrop */
+
+
+	/* Backdrop */
+
+	.tutorial-backdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(15, 23, 42, 0.55);
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		z-index: 50;
+	}
+
+	.tutorial-card.mascot-card {
+		width: min(780px, 95vw);
+		background: #f9fafb;
+		border-radius: 1.25rem;
+		border: 1px solid #e5e7eb;
+		box-shadow:
+			0 24px 60px rgba(15, 23, 42, 0.35),
+			0 0 0 1px rgba(148, 163, 184, 0.4);
+		padding: 1.25rem 1.5rem;
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.tutorial-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
+	.tutorial-header h3 {
+		font-size: 1.2rem;
+		font-weight: 600;
+		color: #111827;
+	}
+
+	.tutorial-close {
+		border: none;
+		background: transparent;
+		cursor: pointer;
+		font-size: 1rem;
+		line-height: 1;
+		padding: 0.25rem 0.5rem;
+		border-radius: 9999px;
+		color: #6b7280;
+	}
+
+	.tutorial-close:hover {
+		background: #e5e7eb;
+		color: #111827;
+	}
+
+	.mascot-layout {
+		display: grid;
+		grid-template-columns: 200px 1fr;
+		gap: 1rem;
+		align-items: center;
+	}
+
+	.mascot-col {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+	}
+
+	.mascot-image {
+		width: 160px;
+		max-width: 100%;
+		object-fit: contain;
+	}
+
+	.bubble-col {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.speech-bubble {
+		position: relative;
+		background: #ffffff;
+		border-radius: 1rem;
+		border: 1px solid #e5e7eb;
+		padding: 0.75rem 1rem;
+		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+	}
+
+	/* little triangle pointing to mascot */
+	.speech-bubble::before {
+		content: '';
+		position: absolute;
+		left: -14px;
+		top: 40%;
+		border-width: 10px;
+		border-style: solid;
+		border-color: transparent #ffffff transparent transparent;
+	}
+
+	.speech-bubble::after {
+		content: '';
+		position: absolute;
+		left: -16px;
+		top: 40%;
+		border-width: 11px;
+		border-style: solid;
+		border-color: transparent #e5e7eb transparent transparent;
+	}
+
+	.speech-bubble h4 {
+		font-size: 1rem;
+		font-weight: 600;
+		color: #111827;
+		margin-bottom: 0.25rem;
+	}
+
+	.speech-bubble p {
+		font-size: 0.9rem;
+		color: #4b5563;
+	}
+
+	.bubble-controls {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.bubble-counter {
+		font-size: 0.8rem;
+		color: #6b7280;
+	}
+
+	.mascot-start-btn {
+		align-self: flex-end;
+		margin-top: 0.25rem;
+	}
+
+	/* primary button style if you don't have it yet */
+
+	.btn.primary {
+		background: #16a34a;
+		color: white;
+	}
+
+	.btn.primary:hover {
+		background: #15803d;
+	}
+
+	@media (max-width: 640px) {
+		.mascot-layout {
+			grid-template-columns: 1fr;
+		}
+
+		.speech-bubble::before,
+		.speech-bubble::after {
+			display: none;
+		}
+
+		.mascot-col {
+			order: -1;
+		}
 	}
 
 	.asset-list {
@@ -357,6 +706,7 @@
 	}
 
 	/* GRID SIDE */
+
 	.grid-wrapper {
 		display: flex;
 		flex-direction: column;
@@ -409,6 +759,7 @@
 	}
 
 	/* Fixed-size image area – grid stretches to fill it */
+
 	.design-area {
 		position: relative;
 		width: 900px;
