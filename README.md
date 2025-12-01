@@ -5,7 +5,7 @@ This project is a web application that enables teachers and students to co-desig
 The platform is delivered as a full frontend–backend system.
 
 **Frontend**
-A SvelteKit application that provides the main user interface for both teachers and students.
+A SvelteKit application that provides the main user interface for both teachers and elementary school students.
 
 **Backend**
 A Node/Express API responsible for managing sessions, templates, user roles, assets, and design submissions.

@@ -1,0 +1,38 @@
+name: Frontend CI
+
+on:
+  push:
+    branches: [ main, development ]
+  pull_request:
+    branches: [ main, development ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Notify Microsoft Teams
+        if: always()
+        run: |
+          STATUS="success"
+          if [ "${{ job.status }}" != "success" ]; then
+            STATUS="failure"
+          fi
+          MESSAGE="{\"text\": \"Frontend CI finished with *$STATUS* on branch *${{ github.ref_name }}*.\"}"
+          curl -H 'Content-Type: application/json' \
+               -d "$MESSAGE" \
+               "${{secrets.TEAMS_WEBHOOK_URL}}"
