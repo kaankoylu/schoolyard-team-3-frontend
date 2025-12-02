@@ -1,5 +1,5 @@
 <script lang="ts">
-	// --- SAVE DESIGN → console ---
+	// --- SAVE DESIGN: payload builder ---
 
 	function buildDesignPayload() {
 		return {
@@ -25,8 +25,43 @@
 		alert('Design logged in de console (open DevTools → Console).');
 	}
 
+	// --- NEW: save to backend (Laravel API) ---
+
+	async function saveDesignToBackend() {
+		const payload = buildDesignPayload();
+
+		try {
+			const response = await fetch('http://localhost/api/designs', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					rows: payload.rows,
+					cols: payload.cols,
+					backgroundImage: payload.backgroundImage,
+					placedAssets: payload.placedAssets
+				})
+			});
+
+			if (!response.ok) {
+				const text = await response.text();
+				console.error('Failed to save design:', response.status, text);
+				alert('Opslaan mislukt. Check de browser console voor details.');
+				return;
+			}
+
+			const data = await response.json();
+			console.log('✅ Design saved to backend:', data);
+			alert(`Design opgeslagen! ID: ${data.id}`);
+		} catch (error) {
+			console.error('Network error while saving design:', error);
+			alert('Kon geen verbinding maken met de server.');
+		}
+	}
+
 	// Tutorial state: mascot speech bubbles
-	// ❗ Start CLOSED instead of open
+	// start CLOSED instead of open
 	let showTutorial = false;
 
 	type TutorialBubble = {
@@ -133,9 +168,7 @@
 	let deleteMode = false;
 
 	// drag source type
-	type DragSource =
-		| { type: 'palette'; asset: Asset }
-		| { type: 'placed'; instanceId: number };
+	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
 
 	// track drag source: from palette or from already placed asset
 	let dragSource: DragSource | null = null;
@@ -401,12 +434,14 @@
 			</button>
 
 			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-				💾 Save design (console)
+				🖥 Save design (console)
 			</button>
 
-			<button class="btn secondary" type="button" on:click={resetGrid}>
-				🧹 Reset grid
+			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
+				💾 Save design (backend)
 			</button>
+
+			<button class="btn secondary" type="button" on:click={resetGrid}> 🧹 Reset grid </button>
 
 			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
 				↩️ Undo
@@ -426,12 +461,7 @@
 			class="design-area"
 			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
 		>
-			<div
-				class="grid"
-				bind:this={gridEl}
-				on:dragover={handleDragOver}
-				on:drop={handleGridDrop}
-			>
+			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
 				<!-- grid cells as background only -->
 				{#each Array.from({ length: rows * cols }) as _}
 					<div class="grid-cell" />
@@ -458,8 +488,8 @@
 		</div>
 
 		<p class="hint">
-			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren. Delete-modus +
-			klik verwijdert.
+			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
+			Delete-modus + klik verwijdert.
 		</p>
 	</main>
 </div>
@@ -839,48 +869,47 @@
 		transition: transform 0.15s ease;
 	}
 
-	.hint {	
+	.hint {
 		font-size: 0.8rem;
 		color: #6b7280;
 		margin-top: 0.75rem;
 		align-self: flex-start;
 	}
 
-.design-area {
-    position: relative;
-    width: 900px;
-    height: 520px;
-    /* REMOVE max-width if you want it truly fixed */
-    /* max-width: 100%; */
-    overflow: hidden;
+	.design-area {
+		position: relative;
+		width: 900px;
+		height: 520px;
+		/* REMOVE max-width if you want it truly fixed */
+		/* max-width: 100%; */
+		overflow: hidden;
 
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
 
-    border-radius: 1.1rem;
-    border: 2px solid rgba(34, 197, 94, 0.6);
-    padding: 6px;
-    box-shadow:
-        0 20px 40px rgba(15, 23, 42, 0.85),
-        inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-    background-color: #022c22;
-}
+		border-radius: 1.1rem;
+		border: 2px solid rgba(34, 197, 94, 0.6);
+		padding: 6px;
+		box-shadow:
+			0 20px 40px rgba(15, 23, 42, 0.85),
+			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
+		background-color: #022c22;
+	}
 
-/* keep the rest of the media query but drop the .design-area override */
-@media (max-width: 900px) {
-    .designer-page {
-        grid-template-columns: 1fr;
-        padding: 1.25rem 1rem;
-    }
+	/* keep the rest of the media query but drop the .design-area override */
+	@media (max-width: 900px) {
+		.designer-page {
+			grid-template-columns: 1fr;
+			padding: 1.25rem 1rem;
+		}
 
-    /* DELETE this block:
+		/* DELETE this block:
     .design-area {
         width: 100%;
         height: auto;
         aspect-ratio: 900 / 520;
     }
     */
-}
-
+	}
 </style>
