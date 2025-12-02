@@ -26,7 +26,8 @@
 	}
 
 	// Tutorial state: mascot speech bubbles
-	let showTutorial = true;
+	// ❗ Start CLOSED instead of open
+	let showTutorial = false;
 
 	type TutorialBubble = {
 		title: string;
@@ -139,6 +140,9 @@
 	// track drag source: from palette or from already placed asset
 	let dragSource: DragSource | null = null;
 
+	// reference to the grid DOM element
+	let gridEl: HTMLDivElement | null = null;
+
 	// ===== helpers =====
 
 	function pushHistory() {
@@ -168,6 +172,23 @@
 		};
 	}
 
+	// Get width/height in grid cells, taking rotation into account
+	function getRotatedSize(asset: Asset, rotation: number) {
+		const normalizedRotation = ((rotation % 360) + 360) % 360;
+
+		if (normalizedRotation === 90 || normalizedRotation === 270) {
+			return {
+				width: asset.height,
+				height: asset.width
+			};
+		}
+
+		return {
+			width: asset.width,
+			height: asset.height
+		};
+	}
+
 	function countPlaced(assetId: string): number {
 		return placedAssets.filter((p) => p.asset.id === assetId).length;
 	}
@@ -189,17 +210,31 @@
 	}
 
 	function handleDragOver(event: DragEvent) {
+		// Needed so drop is allowed
 		event.preventDefault();
 	}
 
-	// Drop: either create new (palette) or move existing (placed)
-	function handleDrop(index: number) {
-		// Snapshot dragSource to satisfy TS and avoid race issues
-		const source = dragSource;
-		if (!source) return;
+	// Drop on the grid: compute row/col from mouse position
+	function handleGridDrop(event: DragEvent) {
+		event.preventDefault();
 
-		const baseRow = Math.floor(index / cols);
-		const baseCol = index % cols;
+		const source = dragSource;
+		if (!source || !gridEl) return;
+
+		const rect = gridEl.getBoundingClientRect();
+
+		const x = event.clientX - rect.left;
+		const y = event.clientY - rect.top;
+
+		const cellWidth = rect.width / cols;
+		const cellHeight = rect.height / rows;
+
+		let baseCol = Math.floor(x / cellWidth);
+		let baseRow = Math.floor(y / cellHeight);
+
+		// clamp to grid bounds
+		baseCol = Math.max(0, Math.min(baseCol, cols - 1));
+		baseRow = Math.max(0, Math.min(baseRow, rows - 1));
 
 		pushHistory(); // save state before change
 
@@ -391,14 +426,15 @@
 			class="design-area"
 			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
 		>
-			<div class="grid">
-				<!-- grid cells as background / drop targets -->
-				{#each Array.from({ length: rows * cols }) as _, index}
-					<div
-						class="grid-cell"
-						on:dragover={handleDragOver}
-						on:drop={() => handleDrop(index)}
-					/>
+			<div
+				class="grid"
+				bind:this={gridEl}
+				on:dragover={handleDragOver}
+				on:drop={handleGridDrop}
+			>
+				<!-- grid cells as background only -->
+				{#each Array.from({ length: rows * cols }) as _}
+					<div class="grid-cell" />
 				{/each}
 
 				<!-- placed assets as ONE block spanning multiple cells -->
@@ -408,11 +444,11 @@
 						draggable="true"
 						on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
 						on:dragend={handleDragEnd}
-						style={`grid-column: ${placed.col + 1} / span ${placed.asset.width}; grid-row: ${
-							placed.row + 1
-						} / span ${placed.asset.height}; background-image: url('${
-							placed.asset.image
-						}'); transform: rotate(${placed.rotation}deg);`}
+						style={`grid-column: ${placed.col + 1} / span ${
+							getRotatedSize(placed.asset, placed.rotation).width
+						}; grid-row: ${placed.row + 1} / span ${
+							getRotatedSize(placed.asset, placed.rotation).height
+						}; background-image: url('${placed.asset.image}'); transform: rotate(${placed.rotation}deg);`}
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
@@ -459,9 +495,6 @@
 		color: white;
 		text-align: center;
 	}
-
-	/* Backdrop */
-
 
 	/* Backdrop */
 
@@ -806,22 +839,48 @@
 		transition: transform 0.15s ease;
 	}
 
-	.hint {
+	.hint {	
 		font-size: 0.8rem;
 		color: #6b7280;
 		margin-top: 0.75rem;
 		align-self: flex-start;
 	}
 
-	@media (max-width: 900px) {
-		.designer-page {
-			grid-template-columns: 1fr;
-		}
+.design-area {
+    position: relative;
+    width: 900px;
+    height: 520px;
+    /* REMOVE max-width if you want it truly fixed */
+    /* max-width: 100%; */
+    overflow: hidden;
 
-		.design-area {
-			width: 100%;
-			height: auto;
-			aspect-ratio: 900 / 520;
-		}
-	}
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    border-radius: 1.1rem;
+    border: 2px solid rgba(34, 197, 94, 0.6);
+    padding: 6px;
+    box-shadow:
+        0 20px 40px rgba(15, 23, 42, 0.85),
+        inset 0 0 0 1px rgba(16, 185, 129, 0.25);
+    background-color: #022c22;
+}
+
+/* keep the rest of the media query but drop the .design-area override */
+@media (max-width: 900px) {
+    .designer-page {
+        grid-template-columns: 1fr;
+        padding: 1.25rem 1rem;
+    }
+
+    /* DELETE this block:
+    .design-area {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 900 / 520;
+    }
+    */
+}
+
 </style>
