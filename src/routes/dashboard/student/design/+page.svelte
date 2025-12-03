@@ -27,38 +27,42 @@
 
 	// --- NEW: save to backend (Laravel API) ---
 
-	async function saveDesignToBackend() {
-		const payload = buildDesignPayload();
+	const API_BASE = 'http://localhost'; // Sail serves Laravel on port 80
+// If you ever proxy through Svelte, we can change this later.
 
-		try {
-			const response = await fetch('http://localhost/api/designs', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					rows: payload.rows,
-					cols: payload.cols,
-					backgroundImage: payload.backgroundImage,
-					placedAssets: payload.placedAssets
-				})
-			});
+/**
+ * Save current design to the Laravel backend.
+ */
+async function saveDesignToBackend() {
+	const payload = buildDesignPayload();
 
-			if (!response.ok) {
-				const text = await response.text();
-				console.error('Failed to save design:', response.status, text);
-				alert('Opslaan mislukt. Check de browser console voor details.');
-				return;
-			}
+	try {
+		const response = await fetch(`${API_BASE}/api/designs`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json'
+				// no Authorization yet, routes are public for now
+			},
+			body: JSON.stringify(payload)
+		});
 
-			const data = await response.json();
-			console.log('✅ Design saved to backend:', data);
-			alert(`Design opgeslagen! ID: ${data.id}`);
-		} catch (error) {
-			console.error('Network error while saving design:', error);
-			alert('Kon geen verbinding maken met de server.');
+		if (!response.ok) {
+			const errorText = await response.text();
+			console.error('Backend error:', response.status, errorText);
+			alert(`Opslaan mislukt (${response.status}). Check de console.`);
+			return;
 		}
+
+		const data = await response.json();
+		console.log('✅ Design saved:', data);
+		alert(`Design opgeslagen met ID ${data.id}`);
+	} catch (err) {
+		console.error('Network / fetch error:', err);
+		alert('Netwerkfout bij opslaan. Draait de backend nog?');
 	}
+}
+
 
 	// Tutorial state: mascot speech bubbles
 	// start CLOSED instead of open
@@ -428,34 +432,37 @@
 		{/if}
 
 		<!-- control buttons -->
-		<div class="toolbar">
-			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-				❓ Tutorial
-			</button>
+	<div class="toolbar">
+	<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
+		❓ Tutorial
+	</button>
 
-			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-				🖥 Save design (console)
-			</button>
+	<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
+		💾 Save design (console)
+	</button>
 
-			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
-				💾 Save design (backend)
-			</button>
+	<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
+		📡 Save design (backend)
+	</button>
 
-			<button class="btn secondary" type="button" on:click={resetGrid}> 🧹 Reset grid </button>
+	<button class="btn secondary" type="button" on:click={resetGrid}>
+		🧹 Reset grid
+	</button>
 
-			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-				↩️ Undo
-			</button>
+	<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
+		↩️ Undo
+	</button>
 
-			<button
-				type="button"
-				class="btn secondary"
-				on:click={toggleDeleteMode}
-				class:active={deleteMode}
-			>
-				{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
-			</button>
-		</div>
+	<button
+		type="button"
+		class="btn secondary"
+		on:click={toggleDeleteMode}
+		class:active={deleteMode}
+	>
+		{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+	</button>
+</div>
+
 
 		<div
 			class="design-area"
