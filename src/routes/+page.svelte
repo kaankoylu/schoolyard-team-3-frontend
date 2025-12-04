@@ -13,13 +13,8 @@
 	       justify-center bg-cover bg-center bg-no-repeat pt-32 pb-24 text-center"
 	style="background-image: url('/istockphoto-1182692791-2048x2048.jpg');"
 >
-	<div
-		class="fade-in mx-auto max-w-3xl px-4"
-		style="animation-delay: 0.1s;"
-	>
-		<h1 class="text-4xl font-semibold text-blue-900 md:text-5xl">
-			Ontwerp Jouw Droomspeelplaats
-		</h1>
+	<div class="fade-in mx-auto max-w-3xl px-4" style="animation-delay: 0.1s;">
+		<h1 class="text-4xl font-semibold text-blue-900 md:text-5xl">Ontwerp Jouw Droomspeelplaats</h1>
 
 		<p class="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
 			Een samenwerkingsplatform waar leerlingen hun ideale speelplaats kunnen ontwerpen, docenten
@@ -33,12 +28,6 @@
 		>
 			Aan de slag
 		</a>
-		<a
-			href="/dashboard/student"
-			class="mt-8 inline-block rounded-md !bg-black px-8 py-3 !text-white shadow transition hover:!bg-neutral-800"
-		>
-			TEST
-		</a>
 	</div>
 </section>
 
@@ -48,14 +37,22 @@
 	</h2>
 
 	<div class="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 md:grid-cols-3">
-
 		<!-- Students -->
 		<div
 			class="scroll-fade rounded-xl border p-8 shadow-sm transition hover:shadow-md"
 			style="animation-delay: 0.1s;"
 		>
-			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+			<div
+				class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-green-600"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path d="M20 21v-2a4 4 0 00-3-3.87"></path>
 					<path d="M4 21v-2a4 4 0 013-3.87"></path>
 					<circle cx="12" cy="7" r="4"></circle>
@@ -63,7 +60,8 @@
 			</div>
 			<h3 class="mb-2 text-xl font-semibold">Voor Leerlingen</h3>
 			<p class="text-gray-600">
-				Ontwerp en bewerk je eigen speelplaats met gebruiksvriendelijke tools en een grote selectie aan objecten.
+				Ontwerp en bewerk je eigen speelplaats met gebruiksvriendelijke tools en een grote selectie
+				aan objecten.
 			</p>
 		</div>
 
@@ -72,8 +70,17 @@
 			class="scroll-fade rounded-xl border p-8 shadow-sm transition hover:shadow-md"
 			style="animation-delay: 0.3s;"
 		>
-			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-purple-600">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+			<div
+				class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 text-purple-600"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path d="M12 2l9 4-9 4-9-4 9-4z"></path>
 					<path d="M3 10v6a3 3 0 003 3h12a3 3 0 003-3v-6"></path>
 					<path d="M12 22v-8"></path>
@@ -81,7 +88,8 @@
 			</div>
 			<h3 class="mb-2 text-xl font-semibold">Voor Docenten</h3>
 			<p class="text-gray-600">
-				Beheer klasprojecten, genereer toegangscodes, bekijk ontwerpen van leerlingen en verzamel feedback.
+				Beheer klasprojecten, genereer toegangscodes, bekijk ontwerpen van leerlingen en verzamel
+				feedback.
 			</p>
 		</div>
 
@@ -90,8 +98,17 @@
 			class="scroll-fade rounded-xl border p-8 shadow-sm transition hover:shadow-md"
 			style="animation-delay: 0.5s;"
 		>
-			<div class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600">
-				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+			<div
+				class="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 text-blue-600"
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.8"
+				>
 					<path d="M12 1v3"></path>
 					<path d="M12 20v3"></path>
 					<path d="M4.2 4.2l2.1 2.1"></path>
@@ -108,7 +125,6 @@
 				Upload schoolplattegronden, beheer objecten en houd overzicht over het gehele systeem.
 			</p>
 		</div>
-
 	</div>
 </section>
 
@@ -118,10 +134,10 @@
 		background-color: #eef7ff;
 	}
 	.fade-in {
-	opacity: 0;
-	transform: translateY(20px);
-	animation: fadeUp 0.8s ease-out forwards;
-}
+		opacity: 0;
+		transform: translateY(20px);
+		animation: fadeUp 0.8s ease-out forwards;
+	}
 
 	/* Scroll-linked fade + slide */
 	.scroll-fade {
