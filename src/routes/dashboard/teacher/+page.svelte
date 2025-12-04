@@ -30,7 +30,7 @@
         description="View the student's feedback on assets and designs" 
         title="Student Designs" 
         buttonName="to Student feedback" 
-        href="fcgv"
+        href="/dashboard/teacher/overview"
         />
         <DashboardNavigationCard 
         description="View the student's feedback on assets and designs" 
