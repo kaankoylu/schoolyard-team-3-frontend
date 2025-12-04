@@ -164,4 +164,14 @@
 			transform: translateY(0);
 		}
 	}
+
+.designer-page {
+    background: linear-gradient(180deg, #d4f8e2, #f2fff7);
+    background-image: url('/bg-clouds.svg'), url('/bg-bushes.svg');
+    background-repeat: no-repeat, no-repeat;
+    background-position: top 20px left 10px, bottom -30px right -20px;
+    background-size: 240px, 320px;
+}
+
+
 </style>

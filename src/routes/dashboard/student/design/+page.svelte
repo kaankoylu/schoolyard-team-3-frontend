@@ -28,41 +28,40 @@
 	// --- NEW: save to backend (Laravel API) ---
 
 	const API_BASE = 'http://localhost'; // Sail serves Laravel on port 80
-// If you ever proxy through Svelte, we can change this later.
+	// If you ever proxy through Svelte, we can change this later.
 
-/**
- * Save current design to the Laravel backend.
- */
-async function saveDesignToBackend() {
-	const payload = buildDesignPayload();
+	/**
+	 * Save current design to the Laravel backend.
+	 */
+	async function saveDesignToBackend() {
+		const payload = buildDesignPayload();
 
-	try {
-		const response = await fetch(`${API_BASE}/api/designs`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-				// no Authorization yet, routes are public for now
-			},
-			body: JSON.stringify(payload)
-		});
+		try {
+			const response = await fetch(`${API_BASE}/api/designs`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+					// no Authorization yet, routes are public for now
+				},
+				body: JSON.stringify(payload)
+			});
 
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error('Backend error:', response.status, errorText);
-			alert(`Opslaan mislukt (${response.status}). Check de console.`);
-			return;
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Backend error:', response.status, errorText);
+				alert(`Opslaan mislukt (${response.status}). Check de console.`);
+				return;
+			}
+
+			const data = await response.json();
+			console.log('✅ Design saved:', data);
+			alert(`Design opgeslagen met ID ${data.id}`);
+		} catch (err) {
+			console.error('Network / fetch error:', err);
+			alert('Netwerkfout bij opslaan. Draait de backend nog?');
 		}
-
-		const data = await response.json();
-		console.log('✅ Design saved:', data);
-		alert(`Design opgeslagen met ID ${data.id}`);
-	} catch (err) {
-		console.error('Network / fetch error:', err);
-		alert('Netwerkfout bij opslaan. Draait de backend nog?');
 	}
-}
-
 
 	// Tutorial state: mascot speech bubbles
 	// start CLOSED instead of open
@@ -432,49 +431,46 @@ async function saveDesignToBackend() {
 		{/if}
 
 		<!-- control buttons -->
-	<div class="toolbar">
-	<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-		❓ Tutorial
-	</button>
+		<div class="toolbar">
+			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
+				❓ Tutorial
+			</button>
 
-	<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-		💾 Save design (console)
-	</button>
+			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
+				💾 Save design (console)
+			</button>
 
-	<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
-		📡 Save design (backend)
-	</button>
+			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
+				📡 Save design (backend)
+			</button>
 
-	<button class="btn secondary" type="button" on:click={resetGrid}>
-		🧹 Reset grid
-	</button>
+			<button class="btn secondary" type="button" on:click={resetGrid}>
+				🧹 Reset grid
+			</button>
 
-	<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-		↩️ Undo
-	</button>
+			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
+				↩️ Undo
+			</button>
 
-	<button
-		type="button"
-		class="btn secondary"
-		on:click={toggleDeleteMode}
-		class:active={deleteMode}
-	>
-		{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
-	</button>
-</div>
-
+			<button
+				type="button"
+				class="btn secondary"
+				on:click={toggleDeleteMode}
+				class:active={deleteMode}
+			>
+				{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+			</button>
+		</div>
 
 		<div
 			class="design-area"
 			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
 		>
 			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
-				<!-- grid cells as background only -->
 				{#each Array.from({ length: rows * cols }) as _}
-					<div class="grid-cell" />
+					<div class="grid-cell"></div>
 				{/each}
 
-				<!-- placed assets as ONE block spanning multiple cells -->
 				{#each placedAssets as placed (placed.instanceId)}
 					<div
 						class="placed-asset"
@@ -489,7 +485,7 @@ async function saveDesignToBackend() {
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
-					/>
+					></div>
 				{/each}
 			</div>
 		</div>
@@ -502,13 +498,24 @@ async function saveDesignToBackend() {
 </div>
 
 <style>
+	/* Global page background: your 1.webp */
+	:global(body) {
+		margin: 0;
+		background-image: url('/1.webp');
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+	}
+
 	.designer-page {
 		display: grid;
 		grid-template-columns: 260px 1fr;
 		min-height: calc(100vh - 5rem);
 		gap: 1.5rem;
 		padding: 1.5rem 2rem;
-		background: radial-gradient(circle at top left, #fdf2ff, #f1f5f9);
+		/* remove the big gradient box */
+		background: transparent;
 	}
 
 	/* SIDEBAR */
@@ -832,7 +839,7 @@ async function saveDesignToBackend() {
 
 	.design-area {
 		position: relative;
-		width: 900px;
+		width: 1000px;
 		height: 520px;
 		max-width: 100%;
 		overflow: hidden;
@@ -841,13 +848,13 @@ async function saveDesignToBackend() {
 		background-position: center;
 		background-repeat: no-repeat;
 
-		border-radius: 1rem;
-		border: 2px solid #22c55e;
+		border-radius: 1.1rem;
+		border: 2px solid rgba(34, 197, 94, 0.6);
 		padding: 6px;
 		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.08),
+			0 20px 40px rgba(15, 23, 42, 0.85),
 			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: #ecfdf5;
+		background-color: transparent;
 	}
 
 	.grid {
@@ -883,40 +890,10 @@ async function saveDesignToBackend() {
 		align-self: flex-start;
 	}
 
-	.design-area {
-		position: relative;
-		width: 900px;
-		height: 520px;
-		/* REMOVE max-width if you want it truly fixed */
-		/* max-width: 100%; */
-		overflow: hidden;
-
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-
-		border-radius: 1.1rem;
-		border: 2px solid rgba(34, 197, 94, 0.6);
-		padding: 6px;
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.85),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: #022c22;
-	}
-
-	/* keep the rest of the media query but drop the .design-area override */
 	@media (max-width: 900px) {
 		.designer-page {
 			grid-template-columns: 1fr;
 			padding: 1.25rem 1rem;
 		}
-
-		/* DELETE this block:
-    .design-area {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 900 / 520;
-    }
-    */
 	}
 </style>
