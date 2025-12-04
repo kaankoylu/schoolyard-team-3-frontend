@@ -11,7 +11,7 @@
                 <h2 class="text-xl font-semibold">Marilin Monroe</h2>
             </div>
             <div class="w-full flex flex-col items-center gap-4">
-                <RegularButton name="Start Designing" href="/Design"></RegularButton>
+                <RegularButton name="Start Designing" href="/dashboard/student/design"></RegularButton>
             </div>
     </div>
     <div class="w-full grid grid-cols-2 gird-columns-2 p-6 gap-6">
