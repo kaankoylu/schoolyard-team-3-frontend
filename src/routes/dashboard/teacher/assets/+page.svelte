@@ -1,41 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	// --- API base ---
+	// --- API BASES ---
 	const API_BASE = 'http://localhost';
-	const ASSET_BASE = API_BASE; // for images
-	// --- ASSETS FROM BACKEND ---
+	const ASSET_BASE = API_BASE; // images are served from Laravel at /storage/...
+
+	// ===== TYPES =====
 
 	type Asset = {
 		id: number;
 		slug: string;
 		label: string;
-		image_url: string;
 		width: number;
 		height: number;
+		image: string; // full URL, e.g. http://localhost/storage/assets/xxx.png
 	};
-
-	let assets: Asset[] = [];
-	let assetsLoading = true;
-	let assetsError = '';
-
-	onMount(async () => {
-		try {
-			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) {
-				throw new Error(`Failed to load assets (${res.status})`);
-			}
-			const data = await res.json();
-			assets = Array.isArray(data) ? data : [];
-		} catch (e: any) {
-			console.error(e);
-			assetsError = e?.message ?? 'Kon assets niet laden.';
-		} finally {
-			assetsLoading = false;
-		}
-	});
-
-	// --- SAVE DESIGN: payload builder ---
 
 	const rows = 18;
 	const cols = 22;
@@ -51,67 +30,34 @@
 		rotation: number; // 0, 90, 180, 270
 	};
 
+	// ===== STATE =====
+
+	// assets from backend
+	let assets: Asset[] = [];
+	let assetsLoading = true;
+	let assetsError = '';
+
+	// placed assets on grid
 	let placedAssets: PlacedAsset[] = [];
 	let nextInstanceId = 1;
 
-	function buildDesignPayload() {
-		return {
-			rows,
-			cols,
-			backgroundImage,
-			placedAssets: placedAssets.map((p) => ({
-				instanceId: p.instanceId,
-				assetId: p.asset.id, // DB id
-				label: p.asset.label,
-				row: p.row,
-				col: p.col,
-				width: p.asset.width,
-				height: p.asset.height,
-				rotation: p.rotation
-			}))
-		};
-	}
+	// history for undo
+	let history: PlacedAsset[][] = [];
+	const MAX_HISTORY = 50;
 
-	function saveDesignToConsole() {
-		const payload = buildDesignPayload();
-		console.log('🎨 DESIGN PAYLOAD:', payload);
-		alert('Design logged in de console (open DevTools → Console).');
-	}
+	// delete mode toggle
+	let deleteMode = false;
 
-	/**
-	 * Save current design to the Laravel backend.
-	 */
-	async function saveDesignToBackend() {
-		const payload = buildDesignPayload();
+	// drag source type
+	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
 
-		try {
-			const response = await fetch(`${API_BASE}/api/designs`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-					// no Authorization yet, routes are public for now
-				},
-				body: JSON.stringify(payload)
-			});
+	// track drag source: from palette or from already placed asset
+	let dragSource: DragSource | null = null;
 
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('Backend error:', response.status, errorText);
-				alert(`Opslaan mislukt (${response.status}). Check de console.`);
-				return;
-			}
+	// reference to the grid DOM element
+	let gridEl: HTMLDivElement | null = null;
 
-			const data = await response.json();
-			console.log('✅ Design saved:', data);
-			alert(`Design opgeslagen met ID ${data.id}`);
-		} catch (err) {
-			console.error('Network / fetch error:', err);
-			alert('Netwerkfout bij opslaan. Draait de backend nog?');
-		}
-	}
-
-	// Tutorial state: mascot speech bubbles
+	// Tutorial state: mascot speech bubbles (start CLOSED)
 	let showTutorial = false;
 
 	type TutorialBubble = {
@@ -148,21 +94,95 @@
 		currentBubble = (currentBubble - 1 + mascotBubbles.length) % mascotBubbles.length;
 	}
 
-	// history for undo
-	let history: PlacedAsset[][] = [];
-	const MAX_HISTORY = 50;
+	// ===== LOAD ASSETS FROM BACKEND =====
 
-	// delete mode toggle
-	let deleteMode = false;
+	onMount(async () => {
+		try {
+			const res = await fetch(`${API_BASE}/api/assets`);
+			if (!res.ok) {
+				throw new Error(`Failed to load assets (${res.status})`);
+			}
 
-	// drag source type
-	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
+			const data = await res.json();
+			const raw = Array.isArray(data) ? data : data.data ?? [];
 
-	let dragSource: DragSource | null = null;
+			assets = raw
+				// only assets marked as available
+				.filter((a: any) => (a.is_available ?? 1) === 1)
+				.map((a: any) => ({
+					id: a.id,
+					slug: a.slug,
+					label: a.label,
+					width: a.width,
+					height: a.height,
+					image: `${ASSET_BASE}${a.image_url}`
+				}));
+		} catch (e: any) {
+			console.error(e);
+			assetsError = e?.message ?? 'Could not load assets.';
+		} finally {
+			assetsLoading = false;
+		}
+	});
 
-	let gridEl: HTMLDivElement | null = null;
+	// ===== SAVE DESIGN: payload builder =====
 
-	// ===== helpers =====
+	function buildDesignPayload() {
+		return {
+			rows,
+			cols,
+			backgroundImage,
+			placedAssets: placedAssets.map((p) => ({
+				instanceId: p.instanceId,
+				assetId: String(p.asset.id), // backend ID
+				label: p.asset.label,
+				row: p.row,
+				col: p.col,
+				width: p.asset.width,
+				height: p.asset.height,
+				rotation: p.rotation
+			}))
+		};
+	}
+
+	function saveDesignToConsole() {
+		const payload = buildDesignPayload();
+		console.log('🎨 DESIGN PAYLOAD:', payload);
+		alert('Design logged in de console (open DevTools → Console).');
+	}
+
+	const API_SAVE_BASE = API_BASE; // same host
+
+	async function saveDesignToBackend() {
+		const payload = buildDesignPayload();
+
+		try {
+			const response = await fetch(`${API_SAVE_BASE}/api/designs`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify(payload)
+			});
+
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Backend error:', response.status, errorText);
+				alert(`Opslaan mislukt (${response.status}). Check de console.`);
+				return;
+			}
+
+			const data = await response.json();
+			console.log('✅ Design saved:', data);
+			alert(`Design opgeslagen met ID ${data.id}`);
+		} catch (err) {
+			console.error('Network / fetch error:', err);
+			alert('Netwerkfout bij opslaan. Draait de backend nog?');
+		}
+	}
+
+	// ===== HELPERS =====
 
 	function pushHistory() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
@@ -173,6 +193,7 @@
 		}
 	}
 
+	// Clamp position, taking rotation into account
 	function clampPosition(row: number, col: number, asset: Asset, rotation: number) {
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 		const rotated =
@@ -189,6 +210,7 @@
 		};
 	}
 
+	// Get width/height in grid cells, taking rotation into account
 	function getRotatedSize(asset: Asset, rotation: number) {
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 
@@ -209,13 +231,13 @@
 		return placedAssets.filter((p) => p.asset.id === assetId).length;
 	}
 
-	// ===== drag from palette =====
+	// ===== DRAG FROM PALETTE =====
 
 	function handlePaletteDragStart(asset: Asset) {
 		dragSource = { type: 'palette', asset };
 	}
 
-	// ===== drag existing placed asset =====
+	// ===== DRAG EXISTING PLACED ASSET =====
 
 	function handlePlacedDragStart(instanceId: number) {
 		dragSource = { type: 'placed', instanceId };
@@ -277,6 +299,7 @@
 		dragSource = null;
 	}
 
+	// click on an asset when delete mode is on
 	function handleAssetClick(instanceId: number) {
 		if (!deleteMode) return;
 
@@ -284,6 +307,7 @@
 		placedAssets = placedAssets.filter((p) => p.instanceId !== instanceId);
 	}
 
+	// double-click asset to rotate 90°
 	function rotateAsset(instanceId: number) {
 		pushHistory();
 
@@ -296,6 +320,8 @@
 			return { ...p, rotation: newRotation, row, col };
 		});
 	}
+
+	// buttons
 
 	function resetGrid() {
 		if (placedAssets.length === 0) return;
@@ -323,9 +349,13 @@
 		<h2 class="sidebar-title">Your Toolbox</h2>
 
 		{#if assetsLoading}
-			<p class="px-2 text-xs text-slate-500">Assets worden geladen…</p>
+			<p class="text-xs text-slate-600">Loading assets…</p>
 		{:else if assetsError}
-			<p class="px-2 text-xs text-red-500">{assetsError}</p>
+			<p class="text-xs text-red-600">{assetsError}</p>
+		{:else if assets.length === 0}
+			<p class="text-xs text-slate-600">
+				No assets available yet. Ask your teacher to add some.
+			</p>
 		{:else}
 			<div class="asset-list">
 				{#each assets as asset}
@@ -336,12 +366,7 @@
 						on:dragend={handleDragEnd}
 					>
 						<div class="asset-main">
-							<img
-								src={`${ASSET_BASE}${asset.image_url}`}
-								alt={asset.label}
-								class="h-full w-full object-cover"
-							/>
-
+							<img src={asset.image} alt={asset.label} class="asset-icon" />
 							<span class="asset-label">{asset.label}</span>
 						</div>
 						<span class="asset-count">{countPlaced(asset.id)}</span>
@@ -428,7 +453,9 @@
 				📡 Save design (backend)
 			</button>
 
-			<button class="btn secondary" type="button" on:click={resetGrid}> 🧹 Reset grid </button>
+			<button class="btn secondary" type="button" on:click={resetGrid}>
+				🧹 Reset grid
+			</button>
 
 			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
 				↩️ Undo
@@ -463,7 +490,7 @@
 							getRotatedSize(placed.asset, placed.rotation).width
 						}; grid-row: ${placed.row + 1} / span ${
 							getRotatedSize(placed.asset, placed.rotation).height
-						}; background-image: url('${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
+						}; background-image: url('${placed.asset.image}'); transform: rotate(${placed.rotation}deg);`}
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
@@ -517,6 +544,197 @@
 		color: white;
 		text-align: center;
 	}
+
+	.asset-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+	}
+
+	.asset {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.5rem 0.75rem;
+		border-radius: 0.75rem;
+		cursor: grab;
+		color: #111827;
+		font-weight: 500;
+		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+		transition:
+			transform 0.1s ease,
+			box-shadow 0.1s ease;
+		background-color: white;
+	}
+
+	.asset-main {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+	}
+
+	.asset-icon {
+		width: 32px;
+		height: 32px;
+		border-radius: 0.5rem;
+		object-fit: cover;
+	}
+
+	.asset-label {
+		font-size: 0.9rem;
+	}
+
+	.asset-count {
+		min-width: 1.5rem;
+		text-align: center;
+		font-size: 0.75rem;
+		background: #e5e7eb;
+		border-radius: 9999px;
+		padding: 0.1rem 0.45rem;
+		color: #374151;
+	}
+
+	.asset:active {
+		cursor: grabbing;
+		transform: scale(0.96);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+	}
+
+	.how-to {
+		margin-top: auto;
+		margin-bottom: 0.25rem;
+		padding: 0.75rem 0.9rem;
+		background: #ecfdf5;
+		border-radius: 0.75rem;
+		border: 1px solid #a7f3d0;
+	}
+
+	.how-to h3 {
+		font-size: 0.85rem;
+		font-weight: 600;
+		color: #059669;
+		margin-bottom: 0.25rem;
+	}
+
+	.how-to ul {
+		font-size: 0.75rem;
+		color: #4b5563;
+		padding-left: 1rem;
+		list-style: disc;
+	}
+
+	.grid-wrapper {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		align-items: center;
+	}
+
+	.grid-title {
+		font-weight: 600;
+		font-size: 1.2rem;
+		align-self: flex-start;
+		color: #111827;
+	}
+
+	.toolbar {
+		display: flex;
+		gap: 0.5rem;
+		align-self: flex-start;
+		margin-bottom: 0.5rem;
+	}
+
+	.btn {
+		border-radius: 0.75rem;
+		padding: 0.4rem 0.9rem;
+		font-size: 0.85rem;
+		border: none;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.btn.secondary {
+		background: #e5e7eb;
+		color: #111827;
+	}
+
+	.btn.secondary:hover:enabled {
+		background: #d1d5db;
+	}
+
+	.btn.secondary:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.btn.active {
+		background: #fecaca;
+		color: #991b1b;
+	}
+
+	.btn.primary {
+		background: #16a34a;
+		color: white;
+	}
+
+	.btn.primary:hover {
+		background: #15803d;
+	}
+
+	.design-area {
+		position: relative;
+		width: 1000px;
+		height: 520px;
+		max-width: 100%;
+		overflow: hidden;
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		border-radius: 1.1rem;
+		border: 2px solid rgba(34, 197, 94, 0.6);
+		padding: 6px;
+		box-shadow:
+			0 20px 40px rgba(15, 23, 42, 0.85),
+			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
+		background-color: transparent;
+	}
+
+	.grid {
+		width: 100%;
+		height: 100%;
+		display: grid;
+		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+		grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+		gap: 2px;
+		background: transparent;
+		position: relative;
+	}
+
+	.grid-cell {
+		background: rgba(249, 250, 251, 0.35);
+		border-radius: 0.35rem;
+		border: 1px solid rgba(34, 197, 94, 0.45);
+	}
+
+	.placed-asset {
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		border-radius: 0.35rem;
+		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
+		transition: transform 0.15s ease;
+	}
+
+	.hint {
+		font-size: 0.8rem;
+		color: #6b7280;
+		margin-top: 0.75rem;
+		align-self: flex-start;
+	}
+
+	/* tutorial overlay styles (same as before) */
 
 	.tutorial-backdrop {
 		position: fixed;
@@ -653,13 +871,11 @@
 		margin-top: 0.25rem;
 	}
 
-	.btn.primary {
-		background: #16a34a;
-		color: white;
-	}
-
-	.btn.primary:hover {
-		background: #15803d;
+	@media (max-width: 900px) {
+		.designer-page {
+			grid-template-columns: 1fr;
+			padding: 1.25rem 1rem;
+		}
 	}
 
 	@media (max-width: 640px) {
@@ -674,195 +890,6 @@
 
 		.mascot-col {
 			order: -1;
-		}
-	}
-
-	.asset-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.asset {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		border-radius: 0.75rem;
-		cursor: grab;
-		color: #111827;
-		font-weight: 500;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-		transition:
-			transform 0.1s ease,
-			box-shadow 0.1s ease;
-		background-color: white;
-	}
-
-	.asset-main {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.asset-icon {
-		width: 32px;
-		height: 32px;
-		border-radius: 0.5rem;
-		object-fit: cover;
-	}
-
-	.asset-label {
-		font-size: 0.9rem;
-	}
-
-	.asset-count {
-		min-width: 1.5rem;
-		text-align: center;
-		font-size: 0.75rem;
-		background: #e5e7eb;
-		border-radius: 9999px;
-		padding: 0.1rem 0.45rem;
-		color: #374151;
-	}
-
-	.asset:active {
-		cursor: grabbing;
-		transform: scale(0.96);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-	}
-
-	.how-to {
-		margin-top: auto;
-		margin-bottom: 0.25rem;
-		padding: 0.75rem 0.9rem;
-		background: #ecfdf5;
-		border-radius: 0.75rem;
-		border: 1px solid #a7f3d0;
-	}
-
-	.how-to h3 {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: #059669;
-		margin-bottom: 0.25rem;
-	}
-
-	.how-to ul {
-		font-size: 0.75rem;
-		color: #4b5563;
-		padding-left: 1rem;
-		list-style: disc;
-	}
-
-	.grid-wrapper {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.grid-title {
-		font-weight: 600;
-		font-size: 1.2rem;
-		align-self: flex-start;
-		color: #111827;
-	}
-
-	.toolbar {
-		display: flex;
-		gap: 0.5rem;
-		align-self: flex-start;
-		margin-bottom: 0.5rem;
-	}
-
-	.btn {
-		border-radius: 0.75rem;
-		padding: 0.4rem 0.9rem;
-		font-size: 0.85rem;
-		border: none;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-
-	.btn.secondary {
-		background: #e5e7eb;
-		color: #111827;
-	}
-
-	.btn.secondary:hover:enabled {
-		background: #d1d5db;
-	}
-
-	.btn.secondary:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	.btn.active {
-		background: #fecaca;
-		color: #991b1b;
-	}
-
-	.design-area {
-		position: relative;
-		width: 1000px;
-		height: 520px;
-		max-width: 100%;
-		overflow: hidden;
-
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-
-		border-radius: 1.1rem;
-		border: 2px solid rgba(34, 197, 94, 0.6);
-		padding: 6px;
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.85),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: transparent;
-	}
-
-	.grid {
-		width: 100%;
-		height: 100%;
-		display: grid;
-		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-		grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-		gap: 2px;
-		background: transparent;
-		position: relative;
-	}
-
-	.grid-cell {
-		background: rgba(249, 250, 251, 0.35);
-		border-radius: 0.35rem;
-		border: 1px solid rgba(34, 197, 94, 0.45);
-	}
-
-	.placed-asset {
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		border-radius: 0.35rem;
-		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
-		transition: transform 0.15s ease;
-	}
-
-	.hint {
-		font-size: 0.8rem;
-		color: #6b7280;
-		margin-top: 0.75rem;
-		align-self: flex-start;
-	}
-
-	@media (max-width: 900px) {
-		.designer-page {
-			grid-template-columns: 1fr;
-			padding: 1.25rem 1rem;
 		}
 	}
 </style>

@@ -3,6 +3,22 @@
 
 	const API_BASE = 'http://localhost';
 
+	type PlacedAsset = {
+		instanceId?: number;
+		row?: number;
+		col?: number;
+		width?: number;
+		height?: number;
+		label?: string;
+		asset?: {
+			label?: string;
+			width?: number;
+			height?: number;
+			image?: string;
+		};
+		[key: string]: any;
+	};
+
 	type Design = {
 		id: number;
 		rows?: number;
@@ -11,7 +27,9 @@
 		created_at?: string;
 		class_code?: string | null;
 		student_name?: string | null;
-		placedAssets?: any[];
+		placedAssets?: PlacedAsset[];
+		placed_assets?: PlacedAsset[]; // from backend
+		feedback?: string | null;
 		[key: string]: any;
 	};
 
@@ -33,8 +51,20 @@
 
 			const data = await res.json();
 
-			// if your Laravel controller wraps data in { data: [...] }, unwrap it
-			designs = Array.isArray(data) ? data : (data.data ?? []);
+			const raw = Array.isArray(data) ? data : data.data ?? [];
+
+			// normalize placedAssets + feedback
+			designs = raw.map((d: Design) => ({
+				...d,
+				placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
+				feedback: d.feedback ?? null
+			}));
+
+			// preload existing feedback
+			feedbackByDesign = designs.reduce<Record<number, string>>((acc, d) => {
+				acc[d.id] = d.feedback ?? '';
+				return acc;
+			}, {});
 		} catch (e: any) {
 			console.error(e);
 			error = e?.message ?? 'Could not load designs.';
@@ -43,6 +73,17 @@
 		}
 	});
 
+	function groupAssetsByLabel(items: PlacedAsset[]) {
+		const map = new Map<string, number>();
+
+		for (const item of items) {
+			const label = item.label ?? item.asset?.label ?? 'Unknown';
+			map.set(label, (map.get(label) ?? 0) + 1);
+		}
+
+		return Array.from(map.entries()).map(([label, count]) => ({ label, count }));
+	}
+
 	async function submitFeedback(designId: number) {
 		const text = feedbackByDesign[designId]?.trim();
 		if (!text) return;
@@ -50,7 +91,6 @@
 		savingFor = designId;
 
 		try {
-			// Adjust this endpoint to match your Laravel route
 			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
 				method: 'POST',
 				headers: {
@@ -68,8 +108,9 @@
 			}
 
 			alert('Feedback opgeslagen 👍');
-			// optional: clear textarea after save
-			// feedbackByDesign = { ...feedbackByDesign, [designId]: '' };
+
+			// keep local copy in sync
+			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
 		} catch (err) {
 			console.error(err);
 			alert('Netwerkfout bij opslaan van feedback.');
@@ -113,14 +154,37 @@
 					<article
 						class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md"
 					>
-						<!-- Small visual preview -->
-						<div
-							class="h-32 bg-slate-200 bg-cover bg-center"
-							style={`background-image: url('${
-								design.backgroundImage ??
-								'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg'
-							}')`}
-						></div>
+						<!-- Small visual preview with simple asset blocks -->
+						<div class="h-32 bg-slate-200">
+							<div
+								class="relative h-full w-full overflow-hidden rounded-b-none bg-cover bg-center"
+								style={`background-image: url('${
+									design.backgroundImage ??
+									'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg'
+								}')`}
+							>
+								{#if design.rows && design.cols}
+									<div
+										class="absolute inset-1 grid"
+										style={`grid-template-columns: repeat(${design.cols}, 1fr); grid-template-rows: repeat(${design.rows}, 1fr); gap: 1px;`}
+									>
+										{#if design.placedAssets && design.placedAssets.length > 0}
+											{#each design.placedAssets as item}
+												<div
+													class="rounded-[1px] bg-emerald-500/80 border border-emerald-900/40"
+													title={item.label ?? item.asset?.label}
+													style={`grid-column: ${(item.col ?? 0) + 1} / span ${
+														item.width ?? item.asset?.width ?? 1
+													}; grid-row: ${(item.row ?? 0) + 1} / span ${
+														item.height ?? item.asset?.height ?? 1
+													};`}
+												></div>
+											{/each}
+										{/if}
+									</div>
+								{/if}
+							</div>
+						</div>
 
 						<div class="flex flex-col gap-3 p-4">
 							<div class="flex items-center justify-between">
@@ -145,10 +209,26 @@
 								{#if design.student_name}
 									<p>Student: {design.student_name}</p>
 								{/if}
-								{#if design.placedAssets}
+								{#if design.placedAssets && design.placedAssets.length}
 									<p>Items placed: {design.placedAssets.length}</p>
 								{/if}
+								{#if design.feedback}
+									<p class="text-[10px] text-emerald-600">Has feedback ✔</p>
+								{/if}
 							</div>
+
+							<!-- small chip list with asset labels + counts -->
+							{#if design.placedAssets && design.placedAssets.length}
+								<div class="mt-1 flex flex-wrap gap-1">
+									{#each groupAssetsByLabel(design.placedAssets) as group}
+										<span
+											class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[2px] text-[10px] text-emerald-700"
+										>
+											{group.label} × {group.count}
+										</span>
+									{/each}
+                                </div>
+							{/if}
 
 							<!-- feedback box -->
 							<div class="mt-2">
