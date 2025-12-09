@@ -18,15 +18,17 @@
 	let assets: Asset[] = [];
 	let assetsLoading = true;
 	let assetsError = '';
-
 	onMount(async () => {
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
 			if (!res.ok) {
 				throw new Error(`Failed to load assets (${res.status})`);
 			}
+
 			const data = await res.json();
-			assets = Array.isArray(data) ? data : [];
+			const allAssets = Array.isArray(data) ? data : [];
+
+			assets = allAssets.filter((a) => a.is_available === true || a.is_available === 1);
 		} catch (e: any) {
 			console.error(e);
 			assetsError = e?.message ?? 'Kon assets niet laden.';
@@ -463,7 +465,7 @@
 							getRotatedSize(placed.asset, placed.rotation).width
 						}; grid-row: ${placed.row + 1} / span ${
 							getRotatedSize(placed.asset, placed.rotation).height
-						}; background-image: url('${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
+						}; background-image: url('${ASSET_BASE}${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
