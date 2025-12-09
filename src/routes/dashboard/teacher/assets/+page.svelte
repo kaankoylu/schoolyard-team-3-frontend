@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { onMount } from "svelte";
+	import { onMount } from 'svelte';
 
-	const API_BASE = "http://localhost";
+	const API_BASE = 'http://localhost';
 	const ASSET_BASE = API_BASE;
 
 	type Asset = {
@@ -16,10 +16,11 @@
 
 	let assets: Asset[] = [];
 	let loading = true;
-	let error = "";
+	let error = '';
 
-	let newLabel = "";
-	let newSlug = "";
+	// form state
+	let newLabel = '';
+	let newSlug = '';
 	let newWidth = 1;
 	let newHeight = 1;
 	let newIsAvailable = true;
@@ -31,12 +32,12 @@
 
 	const MAX_GRID = 10;
 
-	// Auto-generate slug
+	// Auto-generate slug from label
 	$: newSlug = newLabel
 		.trim()
 		.toLowerCase()
-		.replace(/\s+/g, "_")
-		.replace(/[^a-z0-9_]/g, "");
+		.replace(/\s+/g, '_')
+		.replace(/[^a-z0-9_]/g, '');
 
 	function selectGrid(w: number, h: number) {
 		newWidth = w;
@@ -53,13 +54,17 @@
 
 	async function loadAssets() {
 		loading = true;
+		error = '';
+
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) throw new Error("Failed to load assets.");
+			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
+
 			const data = await res.json();
 			assets = Array.isArray(data) ? data : data.data ?? [];
 		} catch (e: any) {
-			error = e?.message ?? "Failed to load assets.";
+			console.error(e);
+			error = e?.message ?? 'Could not load assets.';
 		} finally {
 			loading = false;
 		}
@@ -69,11 +74,11 @@
 
 	async function createAsset() {
 		if (!newLabel.trim()) {
-			alert("Label is required.");
+			alert('Label is required.');
 			return;
 		}
 		if (!newImageFile) {
-			alert("Select an image.");
+			alert('Choose an image.');
 			return;
 		}
 
@@ -81,57 +86,69 @@
 
 		try {
 			const form = new FormData();
-			form.append("slug", newSlug);
-			form.append("label", newLabel.trim());
-			form.append("width", String(newWidth));
-			form.append("height", String(newHeight));
-			form.append("is_available", newIsAvailable ? "1" : "0");
-			form.append("image", newImageFile);
+			form.append('slug', newSlug);
+			form.append('label', newLabel.trim());
+			form.append('width', String(newWidth));
+			form.append('height', String(newHeight));
+			form.append('is_available', newIsAvailable ? '1' : '0');
+			form.append('image', newImageFile);
 
 			const res = await fetch(`${API_BASE}/api/assets`, {
-				method: "POST",
+				method: 'POST',
 				body: form
 			});
 
 			if (!res.ok) {
-				console.error(await res.text());
-				alert("Create asset failed.");
+				console.error('Create error:', await res.text());
+				alert('Error creating asset.');
 				return;
 			}
 
-			const created = await res.json();
-			assets = [...assets, created];
+			const item = await res.json();
+			assets = [...assets, item];
 
-			newLabel = "";
+			// Reset form
+			newLabel = '';
+			newImageFile = null;
+			newImagePreview = null;
 			newWidth = 1;
 			newHeight = 1;
 			newIsAvailable = true;
-			newImageFile = null;
-			newImagePreview = null;
+
+		} catch (err) {
+			console.error(err);
+			alert('Network error.');
 		} finally {
 			creating = false;
 		}
 	}
 
 	async function toggleAvailability(asset: Asset) {
-		const newValue = !asset.is_available;
+		const newValue = !(asset.is_available ?? true);
 		togglingId = asset.id;
 
 		try {
 			const res = await fetch(`${API_BASE}/api/assets/${asset.id}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ is_available: newValue })
+				method: 'PATCH',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({ is_available: newValue ? 1 : 0 })
 			});
 
 			if (!res.ok) {
-				console.error(await res.text());
-				alert("Failed to update availability.");
+				console.error("Toggle error:", await res.text());
+				alert("Could not update availability.");
 				return;
 			}
 
 			const updated = await res.json();
-			assets = assets.map((a) => (a.id === asset.id ? updated : a));
+			assets = assets.map(a => a.id === asset.id ? updated : a);
+
+		} catch (err) {
+			console.error(err);
+			alert("Network error.");
 		} finally {
 			togglingId = null;
 		}
@@ -141,153 +158,133 @@
 <div class="min-h-screen bg-slate-100/70 px-6 py-10">
 	<div class="mx-auto max-w-6xl space-y-6">
 		<header class="flex items-center justify-between">
-			<div>
-				<h1 class="text-2xl font-semibold">Asset overview</h1>
-				<p class="text-sm text-slate-600">
-					Manage which playground assets are available.
-				</p>
-			</div>
-
-			<a href="/dashboard/teacher" class="text-xs underline">
-				← Back
-			</a>
+			<h1 class="text-2xl font-semibold">Asset Overview</h1>
+			<a href="/dashboard/teacher" class="text-sm underline">← Back</a>
 		</header>
 
 		<!-- CREATE ASSET -->
-		<section class="rounded-xl border bg-white p-4 shadow space-y-4">
-			<h2 class="text-sm font-semibold">Add new asset</h2>
+		<section class="space-y-4 rounded-xl border bg-white p-4 shadow-sm">
+			<h2 class="font-semibold text-sm">Add Asset</h2>
 
-			<!-- GRID PICKER WITH OVERLAY -->
-			<div class="text-xs space-y-2">
-				<p class="font-medium">
-					Size: {newWidth} × {newHeight} cells
+			<!-- Grid Picker (OLD SYSTEM RESTORED 100%) -->
+			<div class="space-y-2 text-xs">
+				<p class="font-medium text-slate-700">
+					Size: {newWidth} × {newHeight}
 				</p>
 
-				<div class="inline-block border rounded-lg p-2 bg-slate-50">
-					<div class="relative">
-						<!-- Grid squares -->
-						{#each Array(MAX_GRID) as _, row}
-							<div class="flex">
-								{#each Array(MAX_GRID) as _, col}
-									<div
-										class="h-6 w-6 border cursor-pointer"
-										class:bg-emerald-300={col + 1 <= newWidth && row + 1 <= newHeight}
-										class:border-emerald-500={col + 1 <= newWidth && row + 1 <= newHeight}
-										on:click={() => selectGrid(col + 1, row + 1)}
-									/>
-								{/each}
-							</div>
-						{/each}
+				<div class="inline-block rounded border bg-slate-50 p-2 relative">
+					{#each Array(MAX_GRID) as _, row}
+						<div class="flex">
+							{#each Array(MAX_GRID) as _, col}
+								<div
+									class="h-6 w-6 border border-slate-200 cursor-pointer"
+									class:bg-emerald-300={col + 1 <= newWidth && row + 1 <= newHeight}
+									on:click={() => selectGrid(col + 1, row + 1)}
+								></div>
+							{/each}
+						</div>
+					{/each}
 
-						<!-- SINGLE IMAGE OVERLAY -->
-						{#if newImagePreview}
-							<div
-								class="absolute top-0 left-0 pointer-events-none overflow-hidden rounded-sm"
-								style={`width:${(newWidth / MAX_GRID) * 100}%; height:${(newHeight / MAX_GRID) * 100}%;`}
-							>
-								<img src={newImagePreview} class="w-full h-full object-cover" />
-							</div>
-						{/if}
-					</div>
+					{#if newImagePreview}
+						<div
+							class="absolute top-0 left-0 pointer-events-none overflow-hidden rounded-sm"
+							style={`width: ${(newWidth / MAX_GRID) * 100}%; height: ${(newHeight / MAX_GRID) * 100}%`}
+						>
+							<img src={newImagePreview} alt="preview" class="h-full w-full object-cover" />
+						</div>
+					{/if}
 				</div>
 			</div>
 
-			<!-- FORM FIELDS -->
+			<!-- Form fields -->
 			<div class="grid gap-3 text-xs md:grid-cols-2 lg:grid-cols-3">
 				<div>
-					<label>Label</label>
-					<input
-						bind:value={newLabel}
-						placeholder="e.g. Groot klimrek"
-						class="w-full border rounded px-2 py-1.5"
-					/>
-					<p class="text-[10px] text-slate-500">
-						Slug (auto): <span class="font-mono">{newSlug}</span>
-					</p>
+					<label class="font-medium">Label</label>
+					<input class="input" bind:value={newLabel} />
+					<p class="text-[10px] text-slate-500">Slug: {newSlug}</p>
 				</div>
 
 				<div>
-					<label>Image file</label>
-					<input type="file" accept="image/*" on:change={handleFileChange} />
-
+					<label class="font-medium">Image</label>
+					<input type="file" accept="image/*" class="text-xs" on:change={handleFileChange} />
 					{#if newImagePreview}
-						<div class="mt-1 w-16 h-16 border rounded overflow-hidden">
-							<img src={newImagePreview} class="object-cover w-full h-full" />
-						</div>
+						<img src={newImagePreview} class="mt-1 h-16 w-16 rounded border object-cover" />
 					{/if}
 				</div>
 
 				<div>
-					<label>Width</label>
-					<input type="number" readonly bind:value={newWidth} class="w-full border rounded bg-slate-50 px-2 py-1.5" />
+					<label class="font-medium">Width</label>
+					<input class="input" readonly bind:value={newWidth} />
 				</div>
 
 				<div>
-					<label>Height</label>
-					<input type="number" readonly bind:value={newHeight} class="w-full border rounded bg-slate-50 px-2 py-1.5" />
+					<label class="font-medium">Height</label>
+					<input class="input" readonly bind:value={newHeight} />
 				</div>
 
-				<div class="flex items-end">
-					<label class="flex items-center gap-2">
-						<input type="checkbox" bind:checked={newIsAvailable} />
-						Available
-					</label>
-				</div>
+				<label class="flex items-center gap-2">
+					<input type="checkbox" bind:checked={newIsAvailable} />
+					Available for students
+				</label>
 			</div>
 
-			<button
-				class="bg-emerald-500 text-white rounded px-3 py-1.5 text-xs"
-				on:click={createAsset}
-				disabled={creating}
-			>
-				{creating ? "Saving…" : "Add asset"}
+			<button class="btn" on:click={createAsset} disabled={creating}>
+				{creating ? 'Saving…' : 'Add Asset'}
 			</button>
 		</section>
 
 		<!-- ASSET LIST -->
-		<section class="rounded-xl border bg-white p-4 shadow space-y-3">
-			<h2 class="text-sm font-semibold">Existing assets</h2>
+		<section class="space-y-3 rounded-xl border bg-white p-4 shadow-sm">
+			<h2 class="font-semibold text-sm">Existing Assets</h2>
 
 			{#if loading}
-				<p>Loading…</p>
+				<p class="text-xs">Loading…</p>
 			{:else if error}
-				<p class="text-red-600">{error}</p>
+				<p class="text-xs text-red-500">{error}</p>
 			{:else}
 				<table class="min-w-full text-xs border-separate border-spacing-y-1">
 					<thead>
-						<tr class="uppercase text-[11px] text-slate-500">
-							<th>Preview</th>
-							<th>Label</th>
-							<th>Slug</th>
-							<th>Size</th>
-							<th>Status</th>
+						<tr class="text-left text-[11px] text-slate-500 uppercase">
+							<th class="px-2 py-1">Preview</th>
+							<th class="px-2 py-1">Label</th>
+							<th class="px-2 py-1">Slug</th>
+							<th class="px-2 py-1">Size</th>
+							<th class="px-2 py-1">Available</th>
 							<th></th>
 						</tr>
 					</thead>
 					<tbody>
-						{#each assets as asset}
+						{#each assets as item}
 							<tr class="bg-slate-50">
 								<td class="px-2 py-1">
-									<div class="w-10 h-10 border rounded overflow-hidden">
-										<img src={`${ASSET_BASE}${asset.image_url}`} class="object-cover w-full h-full" />
+									<div class="h-10 w-10 rounded border overflow-hidden">
+										<img src={`${ASSET_BASE}${item.image_url}`} class="h-full w-full object-cover" />
 									</div>
 								</td>
-								<td>{asset.label}</td>
-								<td>{asset.slug}</td>
-								<td>{asset.width} × {asset.height}</td>
-								<td>
-									<span class={asset.is_available ? "text-emerald-600" : "text-slate-500"}>
-										{asset.is_available ? "Available" : "Hidden"}
+
+								<td class="px-2 py-1">{item.label}</td>
+								<td class="px-2 py-1">{item.slug}</td>
+								<td class="px-2 py-1">{item.width}×{item.height}</td>
+
+								<td class="px-2 py-1">
+									<span class={`px-2 py-[2px] rounded-full text-[10px] ${
+										item.is_available
+											? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+											: 'bg-slate-100 text-slate-500 border border-slate-200'
+									}`}>
+										{item.is_available ? 'Available' : 'Hidden'}
 									</span>
 								</td>
-								<td>
+
+								<td class="px-2 py-1">
 									<button
-										on:click={() => toggleAvailability(asset)}
-										disabled={togglingId === asset.id}
-										class="border rounded px-2 py-1 text-[11px]"
+										class="px-2 py-1 rounded border text-[11px]"
+										on:click={() => toggleAvailability(item)}
+										disabled={togglingId === item.id}
 									>
-										{togglingId === asset.id ? "Saving…" :
-											asset.is_available ? "Hide" : "Show"}
+										{togglingId === item.id
+											? 'Saving…'
+											: item.is_available ? 'Hide' : 'Show'}
 									</button>
 								</td>
 							</tr>
@@ -298,3 +295,20 @@
 		</section>
 	</div>
 </div>
+
+<style>
+	.input {
+		width: 100%;
+		padding: 6px;
+		border: 1px solid #cbd5e1;
+		border-radius: 6px;
+		font-size: 12px;
+	}
+	.btn {
+		padding: 6px 12px;
+		background: #10b981;
+		color: white;
+		border-radius: 6px;
+		font-size: 12px;
+	}
+</style>
