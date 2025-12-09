@@ -1,895 +1,300 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount } from "svelte";
 
-	// --- API BASES ---
-	const API_BASE = 'http://localhost';
-	const ASSET_BASE = API_BASE; // images are served from Laravel at /storage/...
-
-	// ===== TYPES =====
+	const API_BASE = "http://localhost";
+	const ASSET_BASE = API_BASE;
 
 	type Asset = {
 		id: number;
 		slug: string;
 		label: string;
+		image_url: string;
 		width: number;
 		height: number;
-		image: string; // full URL, e.g. http://localhost/storage/assets/xxx.png
+		is_available?: boolean;
 	};
 
-	const rows = 18;
-	const cols = 22;
-
-	let backgroundImage: string =
-		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
-
-	type PlacedAsset = {
-		instanceId: number;
-		asset: Asset;
-		row: number; // 0-based
-		col: number; // 0-based
-		rotation: number; // 0, 90, 180, 270
-	};
-
-	// ===== STATE =====
-
-	// assets from backend
 	let assets: Asset[] = [];
-	let assetsLoading = true;
-	let assetsError = '';
+	let loading = true;
+	let error = "";
 
-	// placed assets on grid
-	let placedAssets: PlacedAsset[] = [];
-	let nextInstanceId = 1;
+	let newLabel = "";
+	let newSlug = "";
+	let newWidth = 1;
+	let newHeight = 1;
+	let newIsAvailable = true;
+	let newImageFile: File | null = null;
+	let newImagePreview: string | null = null;
 
-	// history for undo
-	let history: PlacedAsset[][] = [];
-	const MAX_HISTORY = 50;
+	let creating = false;
+	let togglingId: number | null = null;
 
-	// delete mode toggle
-	let deleteMode = false;
+	const MAX_GRID = 10;
 
-	// drag source type
-	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
+	// Auto-generate slug
+	$: newSlug = newLabel
+		.trim()
+		.toLowerCase()
+		.replace(/\s+/g, "_")
+		.replace(/[^a-z0-9_]/g, "");
 
-	// track drag source: from palette or from already placed asset
-	let dragSource: DragSource | null = null;
-
-	// reference to the grid DOM element
-	let gridEl: HTMLDivElement | null = null;
-
-	// Tutorial state: mascot speech bubbles (start CLOSED)
-	let showTutorial = false;
-
-	type TutorialBubble = {
-		title: string;
-		text: string;
-	};
-
-	const mascotBubbles: TutorialBubble[] = [
-		{
-			title: 'Hoi, ik ben je gids!',
-			text: 'Samen gaan we een supergroen speelplein maken. Sleep straks dingen uit de toolbox naar het rooster.'
-		},
-		{
-			title: 'Stap 1 – Sleep spullen',
-			text: 'Pak een boom, bankje of glijbaan vast en sleep het naar de plattegrond. Laat los om het neer te zetten.'
-		},
-		{
-			title: 'Stap 2 – Verplaats en draai',
-			text: 'Je kunt een geplaatst object weer vastpakken om het te verplaatsen. Dubbelklik erop om het te draaien.'
-		},
-		{
-			title: 'Stap 3 – Opruimen en opnieuw',
-			text: 'Met “Delete mode” kun je dingen wegklikken. Met “Reset” begin je helemaal opnieuw, en met “Undo” ga je één stap terug.'
-		}
-	];
-
-	let currentBubble = 0;
-
-	function nextBubble() {
-		currentBubble = (currentBubble + 1) % mascotBubbles.length;
+	function selectGrid(w: number, h: number) {
+		newWidth = w;
+		newHeight = h;
 	}
 
-	function prevBubble() {
-		currentBubble = (currentBubble - 1 + mascotBubbles.length) % mascotBubbles.length;
+	function handleFileChange(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0] ?? null;
+
+		newImageFile = file;
+		newImagePreview = file ? URL.createObjectURL(file) : null;
 	}
 
-	// ===== LOAD ASSETS FROM BACKEND =====
-
-	onMount(async () => {
+	async function loadAssets() {
+		loading = true;
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) {
-				throw new Error(`Failed to load assets (${res.status})`);
-			}
-
+			if (!res.ok) throw new Error("Failed to load assets.");
 			const data = await res.json();
-			const raw = Array.isArray(data) ? data : data.data ?? [];
-
-			assets = raw
-				// only assets marked as available
-				.filter((a: any) => (a.is_available ?? 1) === 1)
-				.map((a: any) => ({
-					id: a.id,
-					slug: a.slug,
-					label: a.label,
-					width: a.width,
-					height: a.height,
-					image: `${ASSET_BASE}${a.image_url}`
-				}));
+			assets = Array.isArray(data) ? data : data.data ?? [];
 		} catch (e: any) {
-			console.error(e);
-			assetsError = e?.message ?? 'Could not load assets.';
+			error = e?.message ?? "Failed to load assets.";
 		} finally {
-			assetsLoading = false;
+			loading = false;
 		}
-	});
-
-	// ===== SAVE DESIGN: payload builder =====
-
-	function buildDesignPayload() {
-		return {
-			rows,
-			cols,
-			backgroundImage,
-			placedAssets: placedAssets.map((p) => ({
-				instanceId: p.instanceId,
-				assetId: String(p.asset.id), // backend ID
-				label: p.asset.label,
-				row: p.row,
-				col: p.col,
-				width: p.asset.width,
-				height: p.asset.height,
-				rotation: p.rotation
-			}))
-		};
 	}
 
-	function saveDesignToConsole() {
-		const payload = buildDesignPayload();
-		console.log('🎨 DESIGN PAYLOAD:', payload);
-		alert('Design logged in de console (open DevTools → Console).');
-	}
+	onMount(loadAssets);
 
-	const API_SAVE_BASE = API_BASE; // same host
+	async function createAsset() {
+		if (!newLabel.trim()) {
+			alert("Label is required.");
+			return;
+		}
+		if (!newImageFile) {
+			alert("Select an image.");
+			return;
+		}
 
-	async function saveDesignToBackend() {
-		const payload = buildDesignPayload();
+		creating = true;
 
 		try {
-			const response = await fetch(`${API_SAVE_BASE}/api/designs`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				body: JSON.stringify(payload)
+			const form = new FormData();
+			form.append("slug", newSlug);
+			form.append("label", newLabel.trim());
+			form.append("width", String(newWidth));
+			form.append("height", String(newHeight));
+			form.append("is_available", newIsAvailable ? "1" : "0");
+			form.append("image", newImageFile);
+
+			const res = await fetch(`${API_BASE}/api/assets`, {
+				method: "POST",
+				body: form
 			});
 
-			if (!response.ok) {
-				const errorText = await response.text();
-				console.error('Backend error:', response.status, errorText);
-				alert(`Opslaan mislukt (${response.status}). Check de console.`);
+			if (!res.ok) {
+				console.error(await res.text());
+				alert("Create asset failed.");
 				return;
 			}
 
-			const data = await response.json();
-			console.log('✅ Design saved:', data);
-			alert(`Design opgeslagen met ID ${data.id}`);
-		} catch (err) {
-			console.error('Network / fetch error:', err);
-			alert('Netwerkfout bij opslaan. Draait de backend nog?');
+			const created = await res.json();
+			assets = [...assets, created];
+
+			newLabel = "";
+			newWidth = 1;
+			newHeight = 1;
+			newIsAvailable = true;
+			newImageFile = null;
+			newImagePreview = null;
+		} finally {
+			creating = false;
 		}
 	}
 
-	// ===== HELPERS =====
+	async function toggleAvailability(asset: Asset) {
+		const newValue = !asset.is_available;
+		togglingId = asset.id;
 
-	function pushHistory() {
-		const snapshot = placedAssets.map((p) => ({ ...p }));
-		history = [...history, snapshot];
-
-		if (history.length > MAX_HISTORY) {
-			history = history.slice(history.length - MAX_HISTORY);
-		}
-	}
-
-	// Clamp position, taking rotation into account
-	function clampPosition(row: number, col: number, asset: Asset, rotation: number) {
-		const normalizedRotation = ((rotation % 360) + 360) % 360;
-		const rotated =
-			normalizedRotation === 90 || normalizedRotation === 270
-				? { width: asset.height, height: asset.width }
-				: { width: asset.width, height: asset.height };
-
-		const maxRow = rows - rotated.height;
-		const maxCol = cols - rotated.width;
-
-		return {
-			row: Math.max(0, Math.min(row, maxRow)),
-			col: Math.max(0, Math.min(col, maxCol))
-		};
-	}
-
-	// Get width/height in grid cells, taking rotation into account
-	function getRotatedSize(asset: Asset, rotation: number) {
-		const normalizedRotation = ((rotation % 360) + 360) % 360;
-
-		if (normalizedRotation === 90 || normalizedRotation === 270) {
-			return {
-				width: asset.height,
-				height: asset.width
-			};
-		}
-
-		return {
-			width: asset.width,
-			height: asset.height
-		};
-	}
-
-	function countPlaced(assetId: number): number {
-		return placedAssets.filter((p) => p.asset.id === assetId).length;
-	}
-
-	// ===== DRAG FROM PALETTE =====
-
-	function handlePaletteDragStart(asset: Asset) {
-		dragSource = { type: 'palette', asset };
-	}
-
-	// ===== DRAG EXISTING PLACED ASSET =====
-
-	function handlePlacedDragStart(instanceId: number) {
-		dragSource = { type: 'placed', instanceId };
-	}
-
-	function handleDragEnd() {
-		dragSource = null;
-	}
-
-	function handleDragOver(event: DragEvent) {
-		event.preventDefault();
-	}
-
-	// Drop on the grid: compute row/col from mouse position
-	function handleGridDrop(event: DragEvent) {
-		event.preventDefault();
-
-		const source = dragSource;
-		if (!source || !gridEl) return;
-
-		const rect = gridEl.getBoundingClientRect();
-
-		const x = event.clientX - rect.left;
-		const y = event.clientY - rect.top;
-
-		const cellWidth = rect.width / cols;
-		const cellHeight = rect.height / rows;
-
-		let baseCol = Math.floor(x / cellWidth);
-		let baseRow = Math.floor(y / cellHeight);
-
-		baseCol = Math.max(0, Math.min(baseCol, cols - 1));
-		baseRow = Math.max(0, Math.min(baseRow, rows - 1));
-
-		pushHistory();
-
-		if (source.type === 'palette') {
-			const asset = source.asset;
-			const { row, col } = clampPosition(baseRow, baseCol, asset, 0);
-
-			const placed: PlacedAsset = {
-				instanceId: nextInstanceId++,
-				asset,
-				row,
-				col,
-				rotation: 0
-			};
-
-			placedAssets = [...placedAssets, placed];
-		} else if (source.type === 'placed') {
-			placedAssets = placedAssets.map((p) => {
-				if (p.instanceId !== source.instanceId) return p;
-
-				const { row, col } = clampPosition(baseRow, baseCol, p.asset, p.rotation);
-				return { ...p, row, col };
+		try {
+			const res = await fetch(`${API_BASE}/api/assets/${asset.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ is_available: newValue })
 			});
+
+			if (!res.ok) {
+				console.error(await res.text());
+				alert("Failed to update availability.");
+				return;
+			}
+
+			const updated = await res.json();
+			assets = assets.map((a) => (a.id === asset.id ? updated : a));
+		} finally {
+			togglingId = null;
 		}
-
-		dragSource = null;
-	}
-
-	// click on an asset when delete mode is on
-	function handleAssetClick(instanceId: number) {
-		if (!deleteMode) return;
-
-		pushHistory();
-		placedAssets = placedAssets.filter((p) => p.instanceId !== instanceId);
-	}
-
-	// double-click asset to rotate 90°
-	function rotateAsset(instanceId: number) {
-		pushHistory();
-
-		placedAssets = placedAssets.map((p) => {
-			if (p.instanceId !== instanceId) return p;
-
-			const newRotation = (p.rotation + 90) % 360;
-			const { row, col } = clampPosition(p.row, p.col, p.asset, newRotation);
-
-			return { ...p, rotation: newRotation, row, col };
-		});
-	}
-
-	// buttons
-
-	function resetGrid() {
-		if (placedAssets.length === 0) return;
-
-		pushHistory();
-		placedAssets = [];
-	}
-
-	function undo() {
-		if (history.length === 0) return;
-
-		const prev = history[history.length - 1];
-		history = history.slice(0, -1);
-		placedAssets = prev;
-	}
-
-	function toggleDeleteMode() {
-		deleteMode = !deleteMode;
 	}
 </script>
 
-<div class="designer-page">
-	<!-- SIDEBAR: assets -->
-	<aside class="sidebar">
-		<h2 class="sidebar-title">Your Toolbox</h2>
-
-		{#if assetsLoading}
-			<p class="text-xs text-slate-600">Loading assets…</p>
-		{:else if assetsError}
-			<p class="text-xs text-red-600">{assetsError}</p>
-		{:else if assets.length === 0}
-			<p class="text-xs text-slate-600">
-				No assets available yet. Ask your teacher to add some.
-			</p>
-		{:else}
-			<div class="asset-list">
-				{#each assets as asset}
-					<div
-						class="asset"
-						draggable="true"
-						on:dragstart={() => handlePaletteDragStart(asset)}
-						on:dragend={handleDragEnd}
-					>
-						<div class="asset-main">
-							<img src={asset.image} alt={asset.label} class="asset-icon" />
-							<span class="asset-label">{asset.label}</span>
-						</div>
-						<span class="asset-count">{countPlaced(asset.id)}</span>
-					</div>
-				{/each}
+<div class="min-h-screen bg-slate-100/70 px-6 py-10">
+	<div class="mx-auto max-w-6xl space-y-6">
+		<header class="flex items-center justify-between">
+			<div>
+				<h1 class="text-2xl font-semibold">Asset overview</h1>
+				<p class="text-sm text-slate-600">
+					Manage which playground assets are available.
+				</p>
 			</div>
-		{/if}
 
-		<div class="how-to">
-			<h3>How to play</h3>
-			<ul>
-				<li>💡 Sleep een object naar het rooster</li>
-				<li>🎯 Laat los om het te plaatsen</li>
-				<li>✋ Sleep een geplaatst object om het te verplaatsen</li>
-				<li>🔁 Dubbelklik op een object om te roteren</li>
-				<li>🗑 Delete-modus + klik om te verwijderen</li>
-			</ul>
-		</div>
-	</aside>
+			<a href="/dashboard/teacher" class="text-xs underline">
+				← Back
+			</a>
+		</header>
 
-	<!-- MAIN: grid -->
-	<main class="grid-wrapper">
-		<h2 class="grid-title">Jouw ontwerp</h2>
+		<!-- CREATE ASSET -->
+		<section class="rounded-xl border bg-white p-4 shadow space-y-4">
+			<h2 class="text-sm font-semibold">Add new asset</h2>
 
-		{#if showTutorial}
-			<div class="tutorial-backdrop">
-				<div class="tutorial-card mascot-card">
-					<div class="tutorial-header">
-						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>
-							✕
-						</button>
-					</div>
+			<!-- GRID PICKER WITH OVERLAY -->
+			<div class="text-xs space-y-2">
+				<p class="font-medium">
+					Size: {newWidth} × {newHeight} cells
+				</p>
 
-					<div class="mascot-layout">
-						<div class="mascot-col">
-							<img src="/mascot-hedgehog.png" alt="Groene egel mascotte" class="mascot-image" />
-						</div>
-
-						<div class="bubble-col">
-							<div class="speech-bubble">
-								<h4>{mascotBubbles[currentBubble].title}</h4>
-								<p>{mascotBubbles[currentBubble].text}</p>
+				<div class="inline-block border rounded-lg p-2 bg-slate-50">
+					<div class="relative">
+						<!-- Grid squares -->
+						{#each Array(MAX_GRID) as _, row}
+							<div class="flex">
+								{#each Array(MAX_GRID) as _, col}
+									<div
+										class="h-6 w-6 border cursor-pointer"
+										class:bg-emerald-300={col + 1 <= newWidth && row + 1 <= newHeight}
+										class:border-emerald-500={col + 1 <= newWidth && row + 1 <= newHeight}
+										on:click={() => selectGrid(col + 1, row + 1)}
+									/>
+								{/each}
 							</div>
+						{/each}
 
-							<div class="bubble-controls">
-								<button class="btn secondary" type="button" on:click={prevBubble}>
-									← Vorige
-								</button>
-
-								<span class="bubble-counter">
-									{currentBubble + 1} / {mascotBubbles.length}
-								</span>
-
-								<button class="btn secondary" type="button" on:click={nextBubble}>
-									Volgende →
-								</button>
-							</div>
-
-							<button
-								type="button"
-								class="btn primary mascot-start-btn"
-								on:click={() => (showTutorial = false)}
+						<!-- SINGLE IMAGE OVERLAY -->
+						{#if newImagePreview}
+							<div
+								class="absolute top-0 left-0 pointer-events-none overflow-hidden rounded-sm"
+								style={`width:${(newWidth / MAX_GRID) * 100}%; height:${(newHeight / MAX_GRID) * 100}%;`}
 							>
-								Ik snap het, laten we ontwerpen! 🎨
-							</button>
-						</div>
+								<img src={newImagePreview} class="w-full h-full object-cover" />
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>
-		{/if}
 
-		<!-- control buttons -->
-		<div class="toolbar">
-			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-				❓ Tutorial
-			</button>
+			<!-- FORM FIELDS -->
+			<div class="grid gap-3 text-xs md:grid-cols-2 lg:grid-cols-3">
+				<div>
+					<label>Label</label>
+					<input
+						bind:value={newLabel}
+						placeholder="e.g. Groot klimrek"
+						class="w-full border rounded px-2 py-1.5"
+					/>
+					<p class="text-[10px] text-slate-500">
+						Slug (auto): <span class="font-mono">{newSlug}</span>
+					</p>
+				</div>
 
-			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-				💾 Save design (console)
-			</button>
+				<div>
+					<label>Image file</label>
+					<input type="file" accept="image/*" on:change={handleFileChange} />
 
-			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
-				📡 Save design (backend)
-			</button>
+					{#if newImagePreview}
+						<div class="mt-1 w-16 h-16 border rounded overflow-hidden">
+							<img src={newImagePreview} class="object-cover w-full h-full" />
+						</div>
+					{/if}
+				</div>
 
-			<button class="btn secondary" type="button" on:click={resetGrid}>
-				🧹 Reset grid
-			</button>
+				<div>
+					<label>Width</label>
+					<input type="number" readonly bind:value={newWidth} class="w-full border rounded bg-slate-50 px-2 py-1.5" />
+				</div>
 
-			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-				↩️ Undo
-			</button>
+				<div>
+					<label>Height</label>
+					<input type="number" readonly bind:value={newHeight} class="w-full border rounded bg-slate-50 px-2 py-1.5" />
+				</div>
+
+				<div class="flex items-end">
+					<label class="flex items-center gap-2">
+						<input type="checkbox" bind:checked={newIsAvailable} />
+						Available
+					</label>
+				</div>
+			</div>
 
 			<button
-				type="button"
-				class="btn secondary"
-				on:click={toggleDeleteMode}
-				class:active={deleteMode}
+				class="bg-emerald-500 text-white rounded px-3 py-1.5 text-xs"
+				on:click={createAsset}
+				disabled={creating}
 			>
-				{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+				{creating ? "Saving…" : "Add asset"}
 			</button>
-		</div>
+		</section>
 
-		<div
-			class="design-area"
-			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
-		>
-			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
-				{#each Array.from({ length: rows * cols }) as _}
-					<div class="grid-cell"></div>
-				{/each}
+		<!-- ASSET LIST -->
+		<section class="rounded-xl border bg-white p-4 shadow space-y-3">
+			<h2 class="text-sm font-semibold">Existing assets</h2>
 
-				{#each placedAssets as placed (placed.instanceId)}
-					<div
-						class="placed-asset"
-						draggable="true"
-						on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
-						on:dragend={handleDragEnd}
-						style={`grid-column: ${placed.col + 1} / span ${
-							getRotatedSize(placed.asset, placed.rotation).width
-						}; grid-row: ${placed.row + 1} / span ${
-							getRotatedSize(placed.asset, placed.rotation).height
-						}; background-image: url('${placed.asset.image}'); transform: rotate(${placed.rotation}deg);`}
-						title={placed.asset.label}
-						on:click={() => handleAssetClick(placed.instanceId)}
-						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
-					></div>
-				{/each}
-			</div>
-		</div>
-
-		<p class="hint">
-			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik verwijdert.
-		</p>
-	</main>
+			{#if loading}
+				<p>Loading…</p>
+			{:else if error}
+				<p class="text-red-600">{error}</p>
+			{:else}
+				<table class="min-w-full text-xs border-separate border-spacing-y-1">
+					<thead>
+						<tr class="uppercase text-[11px] text-slate-500">
+							<th>Preview</th>
+							<th>Label</th>
+							<th>Slug</th>
+							<th>Size</th>
+							<th>Status</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each assets as asset}
+							<tr class="bg-slate-50">
+								<td class="px-2 py-1">
+									<div class="w-10 h-10 border rounded overflow-hidden">
+										<img src={`${ASSET_BASE}${asset.image_url}`} class="object-cover w-full h-full" />
+									</div>
+								</td>
+								<td>{asset.label}</td>
+								<td>{asset.slug}</td>
+								<td>{asset.width} × {asset.height}</td>
+								<td>
+									<span class={asset.is_available ? "text-emerald-600" : "text-slate-500"}>
+										{asset.is_available ? "Available" : "Hidden"}
+									</span>
+								</td>
+								<td>
+									<button
+										on:click={() => toggleAvailability(asset)}
+										disabled={togglingId === asset.id}
+										class="border rounded px-2 py-1 text-[11px]"
+									>
+										{togglingId === asset.id ? "Saving…" :
+											asset.is_available ? "Hide" : "Show"}
+									</button>
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
+		</section>
+	</div>
 </div>
-
-<style>
-	:global(body) {
-		margin: 0;
-		background-image: url('/1.webp');
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		background-attachment: fixed;
-	}
-
-	.designer-page {
-		display: grid;
-		grid-template-columns: 260px 1fr;
-		min-height: calc(100vh - 5rem);
-		gap: 1.5rem;
-		padding: 1.5rem 2rem;
-		background: transparent;
-	}
-
-	.sidebar {
-		background: #f9fafb;
-		border-radius: 1rem;
-		padding: 1rem;
-		border: 1px solid #e5e7eb;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.sidebar-title {
-		font-weight: 600;
-		font-size: 1.1rem;
-		padding: 0.75rem 1rem;
-		border-radius: 0.9rem;
-		background: linear-gradient(to right, #f472b6, #fb923c);
-		color: white;
-		text-align: center;
-	}
-
-	.asset-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.asset {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		border-radius: 0.75rem;
-		cursor: grab;
-		color: #111827;
-		font-weight: 500;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-		transition:
-			transform 0.1s ease,
-			box-shadow 0.1s ease;
-		background-color: white;
-	}
-
-	.asset-main {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.asset-icon {
-		width: 32px;
-		height: 32px;
-		border-radius: 0.5rem;
-		object-fit: cover;
-	}
-
-	.asset-label {
-		font-size: 0.9rem;
-	}
-
-	.asset-count {
-		min-width: 1.5rem;
-		text-align: center;
-		font-size: 0.75rem;
-		background: #e5e7eb;
-		border-radius: 9999px;
-		padding: 0.1rem 0.45rem;
-		color: #374151;
-	}
-
-	.asset:active {
-		cursor: grabbing;
-		transform: scale(0.96);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-	}
-
-	.how-to {
-		margin-top: auto;
-		margin-bottom: 0.25rem;
-		padding: 0.75rem 0.9rem;
-		background: #ecfdf5;
-		border-radius: 0.75rem;
-		border: 1px solid #a7f3d0;
-	}
-
-	.how-to h3 {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: #059669;
-		margin-bottom: 0.25rem;
-	}
-
-	.how-to ul {
-		font-size: 0.75rem;
-		color: #4b5563;
-		padding-left: 1rem;
-		list-style: disc;
-	}
-
-	.grid-wrapper {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.grid-title {
-		font-weight: 600;
-		font-size: 1.2rem;
-		align-self: flex-start;
-		color: #111827;
-	}
-
-	.toolbar {
-		display: flex;
-		gap: 0.5rem;
-		align-self: flex-start;
-		margin-bottom: 0.5rem;
-	}
-
-	.btn {
-		border-radius: 0.75rem;
-		padding: 0.4rem 0.9rem;
-		font-size: 0.85rem;
-		border: none;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-
-	.btn.secondary {
-		background: #e5e7eb;
-		color: #111827;
-	}
-
-	.btn.secondary:hover:enabled {
-		background: #d1d5db;
-	}
-
-	.btn.secondary:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	.btn.active {
-		background: #fecaca;
-		color: #991b1b;
-	}
-
-	.btn.primary {
-		background: #16a34a;
-		color: white;
-	}
-
-	.btn.primary:hover {
-		background: #15803d;
-	}
-
-	.design-area {
-		position: relative;
-		width: 1000px;
-		height: 520px;
-		max-width: 100%;
-		overflow: hidden;
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		border-radius: 1.1rem;
-		border: 2px solid rgba(34, 197, 94, 0.6);
-		padding: 6px;
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.85),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: transparent;
-	}
-
-	.grid {
-		width: 100%;
-		height: 100%;
-		display: grid;
-		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-		grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-		gap: 2px;
-		background: transparent;
-		position: relative;
-	}
-
-	.grid-cell {
-		background: rgba(249, 250, 251, 0.35);
-		border-radius: 0.35rem;
-		border: 1px solid rgba(34, 197, 94, 0.45);
-	}
-
-	.placed-asset {
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		border-radius: 0.35rem;
-		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
-		transition: transform 0.15s ease;
-	}
-
-	.hint {
-		font-size: 0.8rem;
-		color: #6b7280;
-		margin-top: 0.75rem;
-		align-self: flex-start;
-	}
-
-	/* tutorial overlay styles (same as before) */
-
-	.tutorial-backdrop {
-		position: fixed;
-		inset: 0;
-		background: rgba(15, 23, 42, 0.55);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		z-index: 50;
-	}
-
-	.tutorial-card.mascot-card {
-		width: min(780px, 95vw);
-		background: #f9fafb;
-		border-radius: 1.25rem;
-		border: 1px solid #e5e7eb;
-		box-shadow:
-			0 24px 60px rgba(15, 23, 42, 0.35),
-			0 0 0 1px rgba(148, 163, 184, 0.4);
-		padding: 1.25rem 1.5rem;
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.tutorial-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 0.75rem;
-	}
-
-	.tutorial-header h3 {
-		font-size: 1.2rem;
-		font-weight: 600;
-		color: #111827;
-	}
-
-	.tutorial-close {
-		border: none;
-		background: transparent;
-		cursor: pointer;
-		font-size: 1rem;
-		line-height: 1;
-		padding: 0.25rem 0.5rem;
-		border-radius: 9999px;
-		color: #6b7280;
-	}
-
-	.tutorial-close:hover {
-		background: #e5e7eb;
-		color: #111827;
-	}
-
-	.mascot-layout {
-		display: grid;
-		grid-template-columns: 200px 1fr;
-		gap: 1rem;
-		align-items: center;
-	}
-
-	.mascot-col {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-	}
-
-	.mascot-image {
-		width: 160px;
-		max-width: 100%;
-		object-fit: contain;
-	}
-
-	.bubble-col {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.speech-bubble {
-		position: relative;
-		background: #ffffff;
-		border-radius: 1rem;
-		border: 1px solid #e5e7eb;
-		padding: 0.75rem 1rem;
-		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-	}
-
-	.speech-bubble::before {
-		content: '';
-		position: absolute;
-		left: -14px;
-		top: 40%;
-		border-width: 10px;
-		border-style: solid;
-		border-color: transparent #ffffff transparent transparent;
-	}
-
-	.speech-bubble::after {
-		content: '';
-		position: absolute;
-		left: -16px;
-		top: 40%;
-		border-width: 11px;
-		border-style: solid;
-		border-color: transparent #e5e7eb transparent transparent;
-	}
-
-	.speech-bubble h4 {
-		font-size: 1rem;
-		font-weight: 600;
-		color: #111827;
-		margin-bottom: 0.25rem;
-	}
-
-	.speech-bubble p {
-		font-size: 0.9rem;
-		color: #4b5563;
-	}
-
-	.bubble-controls {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.bubble-counter {
-		font-size: 0.8rem;
-		color: #6b7280;
-	}
-
-	.mascot-start-btn {
-		align-self: flex-end;
-		margin-top: 0.25rem;
-	}
-
-	@media (max-width: 900px) {
-		.designer-page {
-			grid-template-columns: 1fr;
-			padding: 1.25rem 1rem;
-		}
-	}
-
-	@media (max-width: 640px) {
-		.mascot-layout {
-			grid-template-columns: 1fr;
-		}
-
-		.speech-bubble::before,
-		.speech-bubble::after {
-			display: none;
-		}
-
-		.mascot-col {
-			order: -1;
-		}
-	}
-</style>
