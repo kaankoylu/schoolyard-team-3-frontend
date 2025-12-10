@@ -1,14 +1,15 @@
 <script>
-	
- let activeTab = "teacher";
+	let activeTab = 'teacher';
 
 	const tabs = [
 		{ id: 'teacher', label: 'Teacher' },
 		{ id: 'student', label: 'Student' },
-		{ id: 'admin', label: 'Administrator' }
+		{ id: 'admin', label: 'Administrator' },
+		{ id: 'register', label: 'Create account' }
 	];
 
-	import LoginCard from './login_components/+page.svelte';
+	// Nested +page.svelte as component, as in your project
+	import LoginCard from './login_components/LoginCard.svelte';
 </script>
 
 <div class="flex min-h-screen w-full flex-col items-center py-12">
@@ -27,14 +28,15 @@
 	</div>
 
 	<!-- Cards -->
-	 {#if activeTab === 'teacher'}
+	{#if activeTab === 'teacher'}
 		<LoginCard mode="teacher" active={true} />
 	{:else if activeTab === 'student'}
 		<LoginCard mode="student" active={true} />
 	{:else if activeTab === 'admin'}
 		<LoginCard mode="admin" active={true} />
+	{:else if activeTab === 'register'}
+		<LoginCard mode="register" active={true} />
 	{/if}
-
 </div>
 
 <style>

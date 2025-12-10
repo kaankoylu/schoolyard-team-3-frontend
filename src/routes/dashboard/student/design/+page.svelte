@@ -1,5 +1,60 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
+
+	// --- API base ---
+	const API_BASE = 'http://localhost';
+	const ASSET_BASE = API_BASE; // for images
+	// --- ASSETS FROM BACKEND ---
+
+	type Asset = {
+		id: number;
+		slug: string;
+		label: string;
+		image_url: string;
+		width: number;
+		height: number;
+	};
+
+	let assets: Asset[] = [];
+	let assetsLoading = true;
+	let assetsError = '';
+	onMount(async () => {
+		try {
+			const res = await fetch(`${API_BASE}/api/assets`);
+			if (!res.ok) {
+				throw new Error(`Failed to load assets (${res.status})`);
+			}
+
+			const data = await res.json();
+			const allAssets = Array.isArray(data) ? data : [];
+
+			assets = allAssets.filter((a) => a.is_available === true || a.is_available === 1);
+		} catch (e: any) {
+			console.error(e);
+			assetsError = e?.message ?? 'Kon assets niet laden.';
+		} finally {
+			assetsLoading = false;
+		}
+	});
+
 	// --- SAVE DESIGN: payload builder ---
+
+	const rows = 18;
+	const cols = 22;
+
+	let backgroundImage: string =
+		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
+
+	type PlacedAsset = {
+		instanceId: number;
+		asset: Asset;
+		row: number; // 0-based
+		col: number; // 0-based
+		rotation: number; // 0, 90, 180, 270
+	};
+
+	let placedAssets: PlacedAsset[] = [];
+	let nextInstanceId = 1;
 
 	function buildDesignPayload() {
 		return {
@@ -8,7 +63,7 @@
 			backgroundImage,
 			placedAssets: placedAssets.map((p) => ({
 				instanceId: p.instanceId,
-				assetId: p.asset.id,
+				assetId: p.asset.id, // DB id
 				label: p.asset.label,
 				row: p.row,
 				col: p.col,
@@ -25,47 +80,40 @@
 		alert('Design logged in de console (open DevTools → Console).');
 	}
 
-	// --- NEW: save to backend (Laravel API) ---
+	/**
+	 * Save current design to the Laravel backend.
+	 */
+	async function saveDesignToBackend() {
+		const payload = buildDesignPayload();
 
-	const API_BASE = 'http://localhost'; // Sail serves Laravel on port 80
-// If you ever proxy through Svelte, we can change this later.
+		try {
+			const response = await fetch(`${API_BASE}/api/designs`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+					// no Authorization yet, routes are public for now
+				},
+				body: JSON.stringify(payload)
+			});
 
-/**
- * Save current design to the Laravel backend.
- */
-async function saveDesignToBackend() {
-	const payload = buildDesignPayload();
+			if (!response.ok) {
+				const errorText = await response.text();
+				console.error('Backend error:', response.status, errorText);
+				alert(`Opslaan mislukt (${response.status}). Check de console.`);
+				return;
+			}
 
-	try {
-		const response = await fetch(`${API_BASE}/api/designs`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-				// no Authorization yet, routes are public for now
-			},
-			body: JSON.stringify(payload)
-		});
-
-		if (!response.ok) {
-			const errorText = await response.text();
-			console.error('Backend error:', response.status, errorText);
-			alert(`Opslaan mislukt (${response.status}). Check de console.`);
-			return;
+			const data = await response.json();
+			console.log('✅ Design saved:', data);
+			alert(`Design opgeslagen met ID ${data.id}`);
+		} catch (err) {
+			console.error('Network / fetch error:', err);
+			alert('Netwerkfout bij opslaan. Draait de backend nog?');
 		}
-
-		const data = await response.json();
-		console.log('✅ Design saved:', data);
-		alert(`Design opgeslagen met ID ${data.id}`);
-	} catch (err) {
-		console.error('Network / fetch error:', err);
-		alert('Netwerkfout bij opslaan. Draait de backend nog?');
 	}
-}
-
 
 	// Tutorial state: mascot speech bubbles
-	// start CLOSED instead of open
 	let showTutorial = false;
 
 	type TutorialBubble = {
@@ -102,68 +150,6 @@ async function saveDesignToBackend() {
 		currentBubble = (currentBubble - 1 + mascotBubbles.length) % mascotBubbles.length;
 	}
 
-	// Asset type
-	type Asset = {
-		id: string;
-		label: string;
-		color: string;
-		width: number;
-		height: number;
-		image: string;
-	};
-
-	const assets: Asset[] = [
-		{
-			id: 'tree',
-			label: 'Boom',
-			color: '#4ade80',
-			width: 2,
-			height: 2,
-			image: '/placeholder.png'
-		},
-		{
-			id: 'bench',
-			label: 'Bankje',
-			color: '#facc15',
-			width: 2,
-			height: 1,
-			image: '/placeholder.png'
-		},
-		{
-			id: 'slide',
-			label: 'Glijbaan',
-			color: '#60a5fa',
-			width: 1,
-			height: 2,
-			image: '/placeholder.png'
-		},
-		{
-			id: 'sandbox',
-			label: 'Zandbak',
-			color: '#f97316',
-			width: 2,
-			height: 2,
-			image: '/placeholder.png'
-		}
-	];
-
-	const rows = 18;
-	const cols = 22;
-
-	let backgroundImage: string =
-		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
-
-	type PlacedAsset = {
-		instanceId: number;
-		asset: Asset;
-		row: number; // 0-based
-		col: number; // 0-based
-		rotation: number; // 0, 90, 180, 270
-	};
-
-	let placedAssets: PlacedAsset[] = [];
-	let nextInstanceId = 1;
-
 	// history for undo
 	let history: PlacedAsset[][] = [];
 	const MAX_HISTORY = 50;
@@ -174,10 +160,8 @@ async function saveDesignToBackend() {
 	// drag source type
 	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
 
-	// track drag source: from palette or from already placed asset
 	let dragSource: DragSource | null = null;
 
-	// reference to the grid DOM element
 	let gridEl: HTMLDivElement | null = null;
 
 	// ===== helpers =====
@@ -186,13 +170,11 @@ async function saveDesignToBackend() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
 		history = [...history, snapshot];
 
-		// cap history length to avoid unbounded growth
 		if (history.length > MAX_HISTORY) {
 			history = history.slice(history.length - MAX_HISTORY);
 		}
 	}
 
-	// Clamp position, taking rotation into account
 	function clampPosition(row: number, col: number, asset: Asset, rotation: number) {
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 		const rotated =
@@ -209,7 +191,6 @@ async function saveDesignToBackend() {
 		};
 	}
 
-	// Get width/height in grid cells, taking rotation into account
 	function getRotatedSize(asset: Asset, rotation: number) {
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 
@@ -226,7 +207,7 @@ async function saveDesignToBackend() {
 		};
 	}
 
-	function countPlaced(assetId: string): number {
+	function countPlaced(assetId: number): number {
 		return placedAssets.filter((p) => p.asset.id === assetId).length;
 	}
 
@@ -247,7 +228,6 @@ async function saveDesignToBackend() {
 	}
 
 	function handleDragOver(event: DragEvent) {
-		// Needed so drop is allowed
 		event.preventDefault();
 	}
 
@@ -269,11 +249,10 @@ async function saveDesignToBackend() {
 		let baseCol = Math.floor(x / cellWidth);
 		let baseRow = Math.floor(y / cellHeight);
 
-		// clamp to grid bounds
 		baseCol = Math.max(0, Math.min(baseCol, cols - 1));
 		baseRow = Math.max(0, Math.min(baseRow, rows - 1));
 
-		pushHistory(); // save state before change
+		pushHistory();
 
 		if (source.type === 'palette') {
 			const asset = source.asset;
@@ -297,11 +276,9 @@ async function saveDesignToBackend() {
 			});
 		}
 
-		// clear drag source after a successful drop
 		dragSource = null;
 	}
 
-	// click on an asset when delete mode is on
 	function handleAssetClick(instanceId: number) {
 		if (!deleteMode) return;
 
@@ -309,7 +286,6 @@ async function saveDesignToBackend() {
 		placedAssets = placedAssets.filter((p) => p.instanceId !== instanceId);
 	}
 
-	// double-click asset to rotate 90°
 	function rotateAsset(instanceId: number) {
 		pushHistory();
 
@@ -322,8 +298,6 @@ async function saveDesignToBackend() {
 			return { ...p, rotation: newRotation, row, col };
 		});
 	}
-
-	// buttons
 
 	function resetGrid() {
 		if (placedAssets.length === 0) return;
@@ -350,22 +324,33 @@ async function saveDesignToBackend() {
 	<aside class="sidebar">
 		<h2 class="sidebar-title">Your Toolbox</h2>
 
-		<div class="asset-list">
-			{#each assets as asset}
-				<div
-					class="asset"
-					draggable="true"
-					on:dragstart={() => handlePaletteDragStart(asset)}
-					on:dragend={handleDragEnd}
-				>
-					<div class="asset-main">
-						<img src={asset.image} alt={asset.label} class="asset-icon" />
-						<span class="asset-label">{asset.label}</span>
+		{#if assetsLoading}
+			<p class="px-2 text-xs text-slate-500">Assets worden geladen…</p>
+		{:else if assetsError}
+			<p class="px-2 text-xs text-red-500">{assetsError}</p>
+		{:else}
+			<div class="asset-list">
+				{#each assets as asset}
+					<div
+						class="asset"
+						draggable="true"
+						on:dragstart={() => handlePaletteDragStart(asset)}
+						on:dragend={handleDragEnd}
+					>
+						<div class="asset-main">
+							<img
+								src={`${ASSET_BASE}${asset.image_url}`}
+								alt={asset.label}
+								class="h-full w-full object-cover"
+							/>
+
+							<span class="asset-label">{asset.label}</span>
+						</div>
+						<span class="asset-count">{countPlaced(asset.id)}</span>
 					</div>
-					<span class="asset-count">{countPlaced(asset.id)}</span>
-				</div>
-			{/each}
-		</div>
+				{/each}
+			</div>
+		{/if}
 
 		<div class="how-to">
 			<h3>How to play</h3>
@@ -432,49 +417,44 @@ async function saveDesignToBackend() {
 		{/if}
 
 		<!-- control buttons -->
-	<div class="toolbar">
-	<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-		❓ Tutorial
-	</button>
+		<div class="toolbar">
+			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
+				❓ Tutorial
+			</button>
 
-	<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-		💾 Save design (console)
-	</button>
+			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
+				💾 Save design (console)
+			</button>
 
-	<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
-		📡 Save design (backend)
-	</button>
+			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
+				📡 Save design (backend)
+			</button>
 
-	<button class="btn secondary" type="button" on:click={resetGrid}>
-		🧹 Reset grid
-	</button>
+			<button class="btn secondary" type="button" on:click={resetGrid}> 🧹 Reset grid </button>
 
-	<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-		↩️ Undo
-	</button>
+			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
+				↩️ Undo
+			</button>
 
-	<button
-		type="button"
-		class="btn secondary"
-		on:click={toggleDeleteMode}
-		class:active={deleteMode}
-	>
-		{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
-	</button>
-</div>
-
+			<button
+				type="button"
+				class="btn secondary"
+				on:click={toggleDeleteMode}
+				class:active={deleteMode}
+			>
+				{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+			</button>
+		</div>
 
 		<div
 			class="design-area"
 			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
 		>
 			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
-				<!-- grid cells as background only -->
 				{#each Array.from({ length: rows * cols }) as _}
-					<div class="grid-cell" />
+					<div class="grid-cell"></div>
 				{/each}
 
-				<!-- placed assets as ONE block spanning multiple cells -->
 				{#each placedAssets as placed (placed.instanceId)}
 					<div
 						class="placed-asset"
@@ -485,11 +465,11 @@ async function saveDesignToBackend() {
 							getRotatedSize(placed.asset, placed.rotation).width
 						}; grid-row: ${placed.row + 1} / span ${
 							getRotatedSize(placed.asset, placed.rotation).height
-						}; background-image: url('${placed.asset.image}'); transform: rotate(${placed.rotation}deg);`}
+						}; background-image: url('${ASSET_BASE}${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
 						title={placed.asset.label}
 						on:click={() => handleAssetClick(placed.instanceId)}
 						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
-					/>
+					></div>
 				{/each}
 			</div>
 		</div>
@@ -502,16 +482,23 @@ async function saveDesignToBackend() {
 </div>
 
 <style>
+	:global(body) {
+		margin: 0;
+		background-image: url('/1.webp');
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		background-attachment: fixed;
+	}
+
 	.designer-page {
 		display: grid;
 		grid-template-columns: 260px 1fr;
 		min-height: calc(100vh - 5rem);
 		gap: 1.5rem;
 		padding: 1.5rem 2rem;
-		background: radial-gradient(circle at top left, #fdf2ff, #f1f5f9);
+		background: transparent;
 	}
-
-	/* SIDEBAR */
 
 	.sidebar {
 		background: #f9fafb;
@@ -532,8 +519,6 @@ async function saveDesignToBackend() {
 		color: white;
 		text-align: center;
 	}
-
-	/* Backdrop */
 
 	.tutorial-backdrop {
 		position: fixed;
@@ -622,7 +607,6 @@ async function saveDesignToBackend() {
 		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
 	}
 
-	/* little triangle pointing to mascot */
 	.speech-bubble::before {
 		content: '';
 		position: absolute;
@@ -670,8 +654,6 @@ async function saveDesignToBackend() {
 		align-self: flex-end;
 		margin-top: 0.25rem;
 	}
-
-	/* primary button style if you don't have it yet */
 
 	.btn.primary {
 		background: #16a34a;
@@ -775,8 +757,6 @@ async function saveDesignToBackend() {
 		list-style: disc;
 	}
 
-	/* GRID SIDE */
-
 	.grid-wrapper {
 		display: flex;
 		flex-direction: column;
@@ -828,11 +808,9 @@ async function saveDesignToBackend() {
 		color: #991b1b;
 	}
 
-	/* Fixed-size image area – grid stretches to fill it */
-
 	.design-area {
 		position: relative;
-		width: 900px;
+		width: 1000px;
 		height: 520px;
 		max-width: 100%;
 		overflow: hidden;
@@ -841,13 +819,13 @@ async function saveDesignToBackend() {
 		background-position: center;
 		background-repeat: no-repeat;
 
-		border-radius: 1rem;
-		border: 2px solid #22c55e;
+		border-radius: 1.1rem;
+		border: 2px solid rgba(34, 197, 94, 0.6);
 		padding: 6px;
 		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.08),
+			0 20px 40px rgba(15, 23, 42, 0.85),
 			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: #ecfdf5;
+		background-color: transparent;
 	}
 
 	.grid {
@@ -883,40 +861,10 @@ async function saveDesignToBackend() {
 		align-self: flex-start;
 	}
 
-	.design-area {
-		position: relative;
-		width: 900px;
-		height: 520px;
-		/* REMOVE max-width if you want it truly fixed */
-		/* max-width: 100%; */
-		overflow: hidden;
-
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-
-		border-radius: 1.1rem;
-		border: 2px solid rgba(34, 197, 94, 0.6);
-		padding: 6px;
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.85),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: #022c22;
-	}
-
-	/* keep the rest of the media query but drop the .design-area override */
 	@media (max-width: 900px) {
 		.designer-page {
 			grid-template-columns: 1fr;
 			padding: 1.25rem 1rem;
 		}
-
-		/* DELETE this block:
-    .design-area {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 900 / 520;
-    }
-    */
 	}
 </style>
