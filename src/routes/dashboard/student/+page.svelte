@@ -15,7 +15,7 @@
             <h2 class="text-xl font-semibold">Marilin Monroe</h2>
         </div>
         <div class="w-full flex flex-col items-center gap-4">
-            <a href="/next-page" aria-label="Start Designing" class="relative block w-60 h-40 md:w-90 md:h-56 rounded-4xl overflow-hidden shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300 group transform transition hover:scale-105 active:scale-95">
+            <a href="/dashboard/student/design" aria-label="Start Designing" class="relative block w-60 h-40 md:w-90 md:h-56 rounded-4xl overflow-hidden shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300 group transform transition hover:scale-105 active:scale-95">
                 <DesigningIcon />
                 <div class="absolute bottom-2 w-full text-center">
                     <span class="text-white text-md md:text-base font-semibold drop-shadow-md">Start Designing</span>
@@ -26,16 +26,20 @@
     </div>
     <div class="w-full grid grid-cols-2 gird-columns-2 p-6 gap-6">
         <DashboardNavigationCard 
-        description="View the student's feedback on assets and designs" 
+        description="Give Feedback on other students Design" 
         title="Give Feedback" 
-        buttonName="to Student feedback" 
+        buttonName="give Feedback" 
         href="fcgv"
+        imagePath="/dashboard/like.png"
+        style="kids"
         />
         <DashboardNavigationCard 
-        description="View the student's feedback on assets and designs" 
+        description="Read about what you could have in your schoolyard" 
         title="Wiki" 
-        buttonName="to Student feedback" 
+        buttonName="read the Wiki" 
         href="fcgv"
+        imagePath="/dashboard/OpenBook.png"
+        style="kids"
         />
     </div>
 </div>
