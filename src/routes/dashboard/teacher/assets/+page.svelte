@@ -46,7 +46,7 @@
 
 	const MAX_GRID = 10;
 
-	// auto-generate slug from label
+	// auto-generate slug from label (used only for backend, not shown)
 	$: newSlug = newLabel
 		.trim()
 		.toLowerCase()
@@ -207,6 +207,8 @@
 
 	function closeEdit() {
 		editing = null;
+		editImageFile = null;
+		editImagePreview = null;
 	}
 
 	function handleEditFileChange(e: Event) {
@@ -230,19 +232,38 @@
 		savingEdit = true;
 
 		try {
-			const form = new FormData();
-			form.append('label', editLabel.trim());
-			form.append('width', String(editWidth));
-			form.append('height', String(editHeight));
-			form.append('is_available', editIsAvailable ? '1' : '0');
-			if (editImageFile) {
-				form.append('image', editImageFile);
-			}
+			let res: Response;
 
-			const res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
-				method: 'PATCH',
-				body: form
-			});
+			// CASE 1: no new image -> JSON PATCH
+			if (!editImageFile) {
+				res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
+					method: 'PATCH',
+					headers: {
+						'Content-Type': 'application/json',
+						Accept: 'application/json'
+					},
+					body: JSON.stringify({
+						label: editLabel.trim(),
+						width: editWidth,
+						height: editHeight,
+						is_available: editIsAvailable ? 1 : 0
+					})
+				});
+			} else {
+				// CASE 2: new image -> POST with _method=PATCH so Laravel handles file upload
+				const form = new FormData();
+				form.append('label', editLabel.trim());
+				form.append('width', String(editWidth));
+				form.append('height', String(editHeight));
+				form.append('is_available', editIsAvailable ? '1' : '0');
+				form.append('image', editImageFile);
+				form.append('_method', 'PATCH');
+
+				res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
+					method: 'POST',
+					body: form
+				});
+			}
 
 			if (!res.ok) {
 				console.error('Edit error:', res.status, await res.text());
@@ -252,7 +273,10 @@
 
 			const updated = await res.json();
 			assets = assets.map((a) => (a.id === updated.id ? updated : a));
+
 			editing = null;
+			editImageFile = null;
+			editImagePreview = null;
 		} catch (err) {
 			console.error(err);
 			alert('Netwerkfout bij opslaan wijzigingen.');
@@ -320,9 +344,6 @@
 						bind:value={newLabel}
 						placeholder="e.g. Grote boom"
 					/>
-					<p class="text-[10px] text-slate-500">
-						Slug (auto): <span class="font-mono">{newSlug}</span>
-					</p>
 				</div>
 
 				<div class="space-y-1">
@@ -398,7 +419,6 @@
 							<tr class="text-left text-[11px] text-slate-500 uppercase">
 								<th class="px-2 py-1">Preview</th>
 								<th class="px-2 py-1">Label</th>
-								<th class="px-2 py-1">Slug</th>
 								<th class="px-2 py-1">Size</th>
 								<th class="px-2 py-1">Available</th>
 								<th class="px-2 py-1 text-right">Actions</th>
@@ -421,9 +441,6 @@
 									<td class="px-2 py-1">
 										<div class="font-medium text-slate-800">{asset.label}</div>
 										<div class="text-[10px] text-slate-500">ID: {asset.id}</div>
-									</td>
-									<td class="px-2 py-1 text-[11px] text-slate-700">
-										{asset.slug}
 									</td>
 									<td class="px-2 py-1 text-[11px] text-slate-700">
 										{asset.width} × {asset.height}
@@ -568,7 +585,6 @@
 		</div>
 	{/if}
 </div>
-
 
 <style>
 	.input {
