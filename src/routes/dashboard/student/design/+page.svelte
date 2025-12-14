@@ -4,8 +4,8 @@
 	// --- API base ---
 	const API_BASE = 'http://localhost';
 	const ASSET_BASE = API_BASE; // for images
-	// --- ASSETS FROM BACKEND ---
 
+	// --- ASSETS FROM BACKEND ---
 	type Asset = {
 		id: number;
 		slug: string;
@@ -13,21 +13,20 @@
 		image_url: string;
 		width: number;
 		height: number;
+		is_available?: boolean | number;
 	};
 
 	let assets: Asset[] = [];
 	let assetsLoading = true;
 	let assetsError = '';
+
 	onMount(async () => {
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) {
-				throw new Error(`Failed to load assets (${res.status})`);
-			}
+			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
 
 			const data = await res.json();
 			const allAssets = Array.isArray(data) ? data : [];
-
 			assets = allAssets.filter((a) => a.is_available === true || a.is_available === 1);
 		} catch (e: any) {
 			console.error(e);
@@ -38,7 +37,6 @@
 	});
 
 	// --- SAVE DESIGN: payload builder ---
-
 	const rows = 18;
 	const cols = 22;
 
@@ -56,11 +54,46 @@
 	let placedAssets: PlacedAsset[] = [];
 	let nextInstanceId = 1;
 
+	// ✅ student session helper (class + name)
+	type StudentSession = {
+		class_id: number;
+		student_name: string;
+		code?: string;
+		created_at?: number;
+	};
+
+	function getStudentSession(): StudentSession | null {
+		try {
+			const raw = localStorage.getItem('student_session');
+			if (!raw) return null;
+
+			const s = JSON.parse(raw);
+			if (!s?.class_id || !s?.student_name) return null;
+
+			return {
+				class_id: Number(s.class_id),
+				student_name: String(s.student_name),
+				code: s?.code ? String(s.code) : undefined,
+				created_at: s?.created_at ? Number(s.created_at) : undefined
+			};
+		} catch {
+			return null;
+		}
+	}
+
 	function buildDesignPayload() {
+		const session = getStudentSession();
+
 		return {
 			rows,
 			cols,
 			backgroundImage,
+
+			// ✅ attach class + student name to the design
+			class_id: session?.class_id ?? null,
+			student_name: session?.student_name ?? null,
+			class_code: session?.code ? session.code.toUpperCase() : null,
+
 			placedAssets: placedAssets.map((p) => ({
 				instanceId: p.instanceId,
 				assetId: p.asset.id, // DB id
@@ -92,7 +125,6 @@
 				headers: {
 					'Content-Type': 'application/json',
 					Accept: 'application/json'
-					// no Authorization yet, routes are public for now
 				},
 				body: JSON.stringify(payload)
 			});
@@ -159,13 +191,11 @@
 
 	// drag source type
 	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
-
 	let dragSource: DragSource | null = null;
 
 	let gridEl: HTMLDivElement | null = null;
 
 	// ===== helpers =====
-
 	function pushHistory() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
 		history = [...history, snapshot];
@@ -195,16 +225,9 @@
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 
 		if (normalizedRotation === 90 || normalizedRotation === 270) {
-			return {
-				width: asset.height,
-				height: asset.width
-			};
+			return { width: asset.height, height: asset.width };
 		}
-
-		return {
-			width: asset.width,
-			height: asset.height
-		};
+		return { width: asset.width, height: asset.height };
 	}
 
 	function countPlaced(assetId: number): number {
@@ -212,13 +235,11 @@
 	}
 
 	// ===== drag from palette =====
-
 	function handlePaletteDragStart(asset: Asset) {
 		dragSource = { type: 'palette', asset };
 	}
 
 	// ===== drag existing placed asset =====
-
 	function handlePlacedDragStart(instanceId: number) {
 		dragSource = { type: 'placed', instanceId };
 	}
@@ -239,7 +260,6 @@
 		if (!source || !gridEl) return;
 
 		const rect = gridEl.getBoundingClientRect();
-
 		const x = event.clientX - rect.left;
 		const y = event.clientY - rect.top;
 
@@ -383,9 +403,7 @@
 				<div class="tutorial-card mascot-card">
 					<div class="tutorial-header">
 						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>
-							✕
-						</button>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>✕</button>
 					</div>
 
 					<div class="mascot-layout">
@@ -400,22 +418,12 @@
 							</div>
 
 							<div class="bubble-controls">
-								<button class="btn secondary" type="button" on:click={prevBubble}>
-									← Vorige
-								</button>
-
+								<button class="btn secondary" type="button" on:click={prevBubble}>← Vorige</button>
 								<span class="bubble-counter">{currentBubble + 1} / {mascotBubbles.length}</span>
-
-								<button class="btn secondary" type="button" on:click={nextBubble}>
-									Volgende →
-								</button>
+								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button>
 							</div>
 
-							<button
-								type="button"
-								class="btn primary mascot-start-btn"
-								on:click={() => (showTutorial = false)}
-							>
+							<button type="button" class="btn primary mascot-start-btn" on:click={() => (showTutorial = false)}>
 								Ik snap het, laten we ontwerpen! 🎨
 							</button>
 						</div>
@@ -427,41 +435,23 @@
 		<!-- control buttons -->
 		<div class="toolbar">
 			<div class="toolbar-left">
-				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-					❓ Tutorial
-				</button>
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Tutorial</button>
 
-				<button
-					type="button"
-					class="btn secondary"
-					on:click={toggleDeleteMode}
-					class:active={deleteMode}
-				>
+				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
 					{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
 				</button>
 
-				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-					↩️ Undo
-				</button>
-
+				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
 				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Reset</button>
 			</div>
 
 			<div class="toolbar-right">
-				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-					💾 Console
-				</button>
-
-				<button class="btn primary" type="button" on:click={saveDesignToBackend}>
-					📡 Save
-				</button>
+				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
+				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Save</button>
 			</div>
 		</div>
 
-		<div
-			class="design-area"
-			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
-		>
+		<div class="design-area" style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}>
 			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
 				{#each Array.from({ length: rows * cols }) as _}
 					<div class="grid-cell"></div>
@@ -492,7 +482,7 @@
 
 		<p class="hint">
 			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik verwijdert.
+			Delete-modus + klik verwijdert.  
 		</p>
 	</main>
 </div>
@@ -840,7 +830,7 @@
 		margin-top: 0.5rem;
 	}
 
-	/* tutorial modal (kept, slightly cleaner) */
+	/* tutorial modal */
 	.tutorial-backdrop {
 		position: fixed;
 		inset: 0;

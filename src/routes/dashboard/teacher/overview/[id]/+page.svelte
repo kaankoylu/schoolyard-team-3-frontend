@@ -4,6 +4,7 @@
 	import { page } from '$app/stores';
 
 	const API_BASE = 'http://localhost';
+	const ASSET_BASE = API_BASE;
 
 	type PlacedAsset = {
 		instanceId?: number;
@@ -13,12 +14,20 @@
 		height?: number;
 		label?: string;
 		rotation?: number;
+
+		// optional if you still ever send nested asset (you usually don't)
 		asset?: {
 			label?: string;
 			width?: number;
 			height?: number;
 			image?: string;
+			image_url?: string;
 		};
+
+		// if you store these (recommended)
+		assetId?: number;
+		image_url?: string;
+
 		[key: string]: any;
 	};
 
@@ -26,12 +35,22 @@
 		id: number;
 		rows?: number;
 		cols?: number;
+
 		backgroundImage?: string | null;
+		background_image?: string | null;
+
 		placedAssets?: PlacedAsset[];
 		placed_assets?: PlacedAsset[];
+
 		created_at?: string;
-		class_code?: string | null;
+
+		class_id?: number | null;
 		student_name?: string | null;
+
+		// relation from backend (snake/camel)
+		schoolClass?: { id?: number; name?: string } | null;
+		school_class?: { id?: number; name?: string } | null;
+
 		feedback?: string | null;
 		[key: string]: any;
 	};
@@ -69,6 +88,7 @@
 
 			const normalized: Design = {
 				...data,
+				backgroundImage: data.backgroundImage ?? data.background_image ?? null,
 				placedAssets: (data.placedAssets ?? data.placed_assets ?? []) as PlacedAsset[],
 				feedback: data.feedback ?? null
 			};
@@ -82,6 +102,10 @@
 			loading = false;
 		}
 	});
+
+	function getClassName(d: Design) {
+		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—');
+	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
 		const map = new Map<string, number>();
@@ -104,6 +128,21 @@
 		}
 
 		return { width: baseWidth, height: baseHeight };
+	}
+
+	function getPlacedImageUrl(item: PlacedAsset) {
+		// Best-case: you stored image_url in placedAssets when saving
+		const url =
+			item.image_url ??
+			item.asset?.image_url ??
+			item.asset?.image ??
+			null;
+
+		if (!url) return '/placeholder.png';
+
+		// If backend returns "/storage/...." make it absolute
+		if (url.startsWith('http://') || url.startsWith('https://')) return url;
+		return `${ASSET_BASE}${url}`;
 	}
 
 	async function saveFeedback() {
@@ -217,9 +256,9 @@
 											title={item.label ?? item.asset?.label}
 											style={`grid-column: ${(item.col ?? 0) + 1} / span ${
 												size.width
-											}; grid-row: ${(item.row ?? 0) + 1} / span ${size.height}; background-image: url('${
-												item.asset?.image ?? '/placeholder.png'
-											}'); background-size: cover; background-position: center; transform: rotate(${
+											}; grid-row: ${(item.row ?? 0) + 1} / span ${size.height}; background-image: url('${getPlacedImageUrl(
+												item
+											)}'); background-size: cover; background-position: center; transform: rotate(${
 												item.rotation ?? 0
 											}deg);`}
 										/>
@@ -236,9 +275,10 @@
 							{#if design.rows && design.cols}
 								<p><span class="metaKey">Grid</span> {design.rows} × {design.cols}</p>
 							{/if}
-							{#if design.class_code}
-								<p><span class="metaKey">Class</span> {design.class_code}</p>
-							{/if}
+
+							<!-- ✅ Class name instead of code -->
+							<p><span class="metaKey">Class</span> {getClassName(design)}</p>
+
 							{#if design.student_name}
 								<p><span class="metaKey">Student</span> {design.student_name}</p>
 							{/if}
@@ -258,8 +298,6 @@
 							{/if}
 						</div>
 					</div>
-
-				
 				</section>
 
 				<aside class="side">
@@ -288,6 +326,7 @@
 </div>
 
 <style>
+	/* your original CSS unchanged */
 	.page {
 		min-height: 100vh;
 		padding: 28px 16px 44px;
@@ -425,7 +464,6 @@
 		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 	}
 
-	/* ✅ EXACT SAME PREVIEW SIZE AS ORIGINAL */
 	.previewFrame {
 		position: relative;
 		height: 420px;
@@ -437,7 +475,6 @@
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
 	}
 
-	/* ✅ EXACT SAME GRID INSET AS ORIGINAL m-3 */
 	.lockedGrid {
 		position: relative;
 		z-index: 1;
@@ -532,25 +569,6 @@
 		background: rgba(16, 185, 129, 0.1);
 		color: rgba(4, 120, 87, 1);
 		border: 1px solid rgba(16, 185, 129, 0.22);
-	}
-
-	.debugSummary {
-		cursor: pointer;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-		user-select: none;
-	}
-
-	.debugPre {
-		margin: 10px 0 0;
-		max-height: 260px;
-		overflow: auto;
-		border-radius: 14px;
-		background: rgba(15, 23, 42, 0.92);
-		padding: 12px;
-		font-size: 11px;
-		line-height: 1.35;
-		color: rgba(248, 250, 252, 1);
 	}
 
 	.side {

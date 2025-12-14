@@ -19,16 +19,36 @@
 		[key: string]: any;
 	};
 
+	type SchoolClass = {
+		id: number;
+		name: string;
+		active_code?: { code: string } | null;
+		activeCode?: { code: string } | null;
+		[key: string]: any;
+	};
+
 	type Design = {
 		id: number;
 		rows?: number;
 		cols?: number;
 		backgroundImage?: string | null;
+		background_image?: string | null;
 		created_at?: string;
-		class_code?: string | null;
+
+		// student info
+		class_id?: number | null;
 		student_name?: string | null;
+
+		// optional if you still return it
+		class_code?: string | null;
+
+		// relation from backend (could be snake_case or camelCase)
+		schoolClass?: { id?: number; name?: string } | null;
+		school_class?: { id?: number; name?: string } | null;
+
 		placedAssets?: PlacedAsset[];
-		placed_assets?: PlacedAsset[]; // from backend
+		placed_assets?: PlacedAsset[];
+
 		feedback?: string | null;
 		[key: string]: any;
 	};
@@ -37,25 +57,50 @@
 	let loading = true;
 	let error = '';
 
+	// classes for filter
+	let classes: SchoolClass[] = [];
+	let classesLoading = true;
+	let selectedClassId: number | 'all' = 'all';
+
 	// simple feedback state (per design)
 	let feedbackByDesign: Record<number, string> = {};
 	let savingFor: number | null = null;
 
 	onMount(async () => {
+		await Promise.all([loadClasses(), loadDesigns()]);
+	});
+
+	async function loadClasses() {
+		classesLoading = true;
+		try {
+			const res = await fetch(`${API_BASE}/api/classes`);
+			if (!res.ok) throw new Error(`Failed to load classes (${res.status})`);
+			const data = await res.json();
+			classes = Array.isArray(data) ? data : [];
+		} catch (e: any) {
+			console.error(e);
+			// don’t block overview if classes fail
+			classes = [];
+		} finally {
+			classesLoading = false;
+		}
+	}
+
+	async function loadDesigns() {
+		loading = true;
+		error = '';
+
 		try {
 			const res = await fetch(`${API_BASE}/api/designs`);
-
-			if (!res.ok) {
-				throw new Error(`Failed to load designs (${res.status})`);
-			}
+			if (!res.ok) throw new Error(`Failed to load designs (${res.status})`);
 
 			const data = await res.json();
-
 			const raw = Array.isArray(data) ? data : data.data ?? [];
 
-			// normalize placedAssets + feedback
+			// normalize placedAssets + feedback + background field
 			designs = raw.map((d: Design) => ({
 				...d,
+				backgroundImage: d.backgroundImage ?? d.background_image ?? null,
 				placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
 				feedback: d.feedback ?? null
 			}));
@@ -71,7 +116,15 @@
 		} finally {
 			loading = false;
 		}
-	});
+	}
+
+	function getClassName(design: Design) {
+		return (
+			design.schoolClass?.name ??
+			design.school_class?.name ??
+			(design.class_id ? `Class #${design.class_id}` : '—')
+		);
+	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
 		const map = new Map<string, number>();
@@ -83,6 +136,12 @@
 
 		return Array.from(map.entries()).map(([label, count]) => ({ label, count }));
 	}
+
+	// filtered list
+	$: filteredDesigns =
+		selectedClassId === 'all'
+			? designs
+			: designs.filter((d) => Number(d.class_id) === Number(selectedClassId));
 
 	async function submitFeedback(designId: number) {
 		const text = feedbackByDesign[designId]?.trim();
@@ -131,6 +190,24 @@
 			<div class="topbarLeft">
 				<h1 class="title">Student designs</h1>
 				<p class="subtitle">Overview of all saved layouts. Leave quick, kid-friendly feedback.</p>
+
+				<!-- ✅ FILTER BAR -->
+				<div class="filters">
+					<label class="filterLabel" for="classFilter">Filter class</label>
+					<select
+						id="classFilter"
+						class="select"
+						bind:value={selectedClassId}
+						disabled={classesLoading || classes.length === 0}
+					>
+						<option value="all">All classes</option>
+						{#each classes as cls}
+							<option value={cls.id}>{cls.name}</option>
+						{/each}
+					</select>
+
+					<span class="countPill">{filteredDesigns.length} shown</span>
+				</div>
 			</div>
 
 			<a href="/dashboard/teacher" class="backlink">← Back to teacher dashboard</a>
@@ -144,14 +221,20 @@
 			</div>
 		{:else if error}
 			<div class="state error">{error}</div>
-		{:else if designs.length === 0}
+		{:else if filteredDesigns.length === 0}
 			<div class="state empty">
 				<div class="emptyTitle">No designs yet</div>
-				<div class="emptyText">Ask students to save their design first. It will show up here automatically.</div>
+				<div class="emptyText">
+					{#if selectedClassId === 'all'}
+						Ask students to save their design first. It will show up here automatically.
+					{:else}
+						No designs found for this class yet.
+					{/if}
+				</div>
 			</div>
 		{:else}
 			<div class="grid">
-				{#each designs as design}
+				{#each filteredDesigns as design}
 					<article class="card">
 						<!-- preview -->
 						<div class="preview">
@@ -208,9 +291,10 @@
 								{#if design.rows && design.cols}
 									<div><span class="metaKey">Grid</span> {design.rows} × {design.cols}</div>
 								{/if}
-								{#if design.class_code}
-									<div><span class="metaKey">Class</span> {design.class_code}</div>
-								{/if}
+
+								<!-- ✅ show class NAME -->
+								<div><span class="metaKey">Class</span> {getClassName(design)}</div>
+
 								{#if design.student_name}
 									<div><span class="metaKey">Student</span> {design.student_name}</div>
 								{/if}
@@ -302,6 +386,50 @@
 		margin: 0;
 		font-size: 13px;
 		color: rgba(15, 23, 42, 0.66);
+	}
+
+	/* ✅ filter bar */
+	.filters {
+		margin-top: 8px;
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-wrap: wrap;
+	}
+
+	.filterLabel {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.75);
+	}
+
+	.select {
+		padding: 10px 12px;
+		border-radius: 12px;
+		border: 1px solid rgba(15, 23, 42, 0.14);
+		background: rgba(255, 255, 255, 0.92);
+		font-size: 12px;
+		font-weight: 800;
+		color: rgba(15, 23, 42, 0.78);
+		min-width: 180px;
+	}
+
+	.select:focus {
+		outline: none;
+		border-color: rgba(16, 185, 129, 0.45);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+	}
+
+	.countPill {
+		display: inline-flex;
+		align-items: center;
+		padding: 6px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.72);
+		background: rgba(255, 255, 255, 0.82);
+		border: 1px solid rgba(15, 23, 42, 0.10);
 	}
 
 	.backlink {
