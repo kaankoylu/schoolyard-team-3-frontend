@@ -30,6 +30,9 @@
 	let creating = false;
 	let togglingId: number | null = null;
 
+	// ✅ NEW: delete state
+	let deletingId: number | null = null;
+
 	const MAX_GRID = 10;
 
 	// Auto-generate slug from label
@@ -151,6 +154,34 @@
 			togglingId = null;
 		}
 	}
+
+	// ✅ NEW: delete asset
+	async function deleteAsset(asset: Asset) {
+		const ok = confirm(`Delete "${asset.label}" permanently?\nThis will remove the image too.`);
+		if (!ok) return;
+
+		deletingId = asset.id;
+
+		try {
+			const res = await fetch(`${API_BASE}/api/assets/${asset.id}`, {
+				method: 'DELETE',
+				headers: { Accept: 'application/json' }
+			});
+
+			if (!res.ok) {
+				console.error('Delete error:', await res.text());
+				alert('Could not delete asset.');
+				return;
+			}
+
+			assets = assets.filter((a) => a.id !== asset.id);
+		} catch (err) {
+			console.error(err);
+			alert('Network error.');
+		} finally {
+			deletingId = null;
+		}
+	}
 </script>
 
 <div class="page">
@@ -172,7 +203,7 @@
 			</div>
 
 			<div class="createLayout">
-				<!-- Grid Picker (OLD SYSTEM RESTORED 100%) -->
+				<!-- Grid Picker -->
 				<div class="gridPicker">
 					<div class="gridMeta">
 						<span class="gridLabel">Size</span>
@@ -292,23 +323,29 @@
 									<td class="mono">{item.width}×{item.height}</td>
 
 									<td>
-										<span
-											class={`pill ${
-												item.is_available ? 'pillOn' : 'pillOff'
-											}`}
-										>
+										<span class={`pill ${item.is_available ? 'pillOn' : 'pillOff'}`}>
 											{item.is_available ? 'Available' : 'Hidden'}
 										</span>
 									</td>
 
 									<td class="right">
-										<button
-											class="btnGhost"
-											on:click={() => toggleAvailability(item)}
-											disabled={togglingId === item.id}
-										>
-											{togglingId === item.id ? 'Saving…' : item.is_available ? 'Hide' : 'Show'}
-										</button>
+										<div class="rowActions">
+											<button
+												class="btnGhost"
+												on:click={() => toggleAvailability(item)}
+												disabled={togglingId === item.id || deletingId === item.id}
+											>
+												{togglingId === item.id ? 'Saving…' : item.is_available ? 'Hide' : 'Show'}
+											</button>
+
+											<button
+												class="btnDanger"
+												on:click={() => deleteAsset(item)}
+												disabled={deletingId === item.id || togglingId === item.id}
+											>
+												{deletingId === item.id ? 'Deleting…' : 'Delete'}
+											</button>
+										</div>
 									</td>
 								</tr>
 							{/each}
@@ -370,14 +407,8 @@
 		-webkit-backdrop-filter: blur(10px);
 		transition: transform 120ms ease, background-color 160ms ease;
 	}
-	.backlink:hover {
-		background: rgba(255, 255, 255, 0.9);
-		transform: translateY(-1px);
-	}
-	.backlink:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-	}
+	.backlink:hover { background: rgba(255, 255, 255, 0.9); transform: translateY(-1px); }
+	.backlink:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
 
 	.card {
 		border-radius: 18px;
@@ -387,59 +418,15 @@
 		padding: 14px;
 	}
 
-	.cardHeader {
-		display: grid;
-		gap: 4px;
-		margin-bottom: 12px;
-	}
+	.cardHeader { display: grid; gap: 4px; margin-bottom: 12px; }
+	.cardTitle { margin: 0; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; color: rgba(15, 23, 42, 0.75); font-weight: 800; }
+	.cardHint { margin: 0; font-size: 12px; color: rgba(15, 23, 42, 0.55); }
 
-	.cardTitle {
-		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.02em;
-		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.75);
-		font-weight: 800;
-	}
-
-	.cardHint {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	/* Create layout */
-	.createLayout {
-		display: grid;
-		gap: 14px;
-		grid-template-columns: 320px 1fr;
-		align-items: start;
-	}
-
-	.gridPicker {
-		display: grid;
-		gap: 10px;
-	}
-
-	.gridMeta {
-		display: flex;
-		align-items: baseline;
-		gap: 10px;
-	}
-
-	.gridLabel {
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.60);
-		font-weight: 700;
-		text-transform: uppercase;
-		letter-spacing: 0.06em;
-	}
-
-	.gridValue {
-		font-size: 14px;
-		font-weight: 900;
-		color: #0f172a;
-	}
+	.createLayout { display: grid; gap: 14px; grid-template-columns: 320px 1fr; align-items: start; }
+	.gridPicker { display: grid; gap: 10px; }
+	.gridMeta { display: flex; align-items: baseline; gap: 10px; }
+	.gridLabel { font-size: 12px; color: rgba(15, 23, 42, 0.60); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+	.gridValue { font-size: 14px; font-weight: 900; color: #0f172a; }
 
 	.gridBox {
 		position: relative;
@@ -451,14 +438,9 @@
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
 		overflow: hidden;
 	}
-
-	.gridRow {
-		display: flex;
-	}
-
+	.gridRow { display: flex; }
 	.gridCell {
-		height: 22px;
-		width: 22px;
+		height: 22px; width: 22px;
 		border: 1px solid rgba(15, 23, 42, 0.08);
 		background: rgba(255, 255, 255, 0.8);
 		cursor: pointer;
@@ -466,21 +448,9 @@
 		border-radius: 6px;
 		margin: 2px;
 	}
-	.gridCell:hover {
-		border-color: rgba(16, 185, 129, 0.35);
-		transform: translateY(-1px);
-	}
-	.gridCell:active {
-		transform: translateY(0px);
-	}
-	.gridCell:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
-	}
-	.gridCell.isSelected {
-		background: rgba(16, 185, 129, 0.35);
-		border-color: rgba(16, 185, 129, 0.35);
-	}
+	.gridCell:hover { border-color: rgba(16, 185, 129, 0.35); transform: translateY(-1px); }
+	.gridCell:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22); }
+	.gridCell.isSelected { background: rgba(16, 185, 129, 0.35); border-color: rgba(16, 185, 129, 0.35); }
 
 	.gridPreview {
 		position: absolute;
@@ -491,35 +461,12 @@
 		border-radius: 10px;
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 	}
+	.previewImg { height: 100%; width: 100%; object-fit: cover; }
 
-	.previewImg {
-		height: 100%;
-		width: 100%;
-		object-fit: cover;
-	}
-
-	/* Form */
-	.form {
-		display: grid;
-		gap: 10px;
-	}
-
-	.field {
-		display: grid;
-		gap: 6px;
-	}
-
-	.fieldRow {
-		display: grid;
-		gap: 10px;
-		grid-template-columns: 1fr 1fr;
-	}
-
-	.label {
-		font-size: 12px;
-		font-weight: 800;
-		color: rgba(15, 23, 42, 0.75);
-	}
+	.form { display: grid; gap: 10px; }
+	.field { display: grid; gap: 6px; }
+	.fieldRow { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
+	.label { font-size: 12px; font-weight: 800; color: rgba(15, 23, 42, 0.75); }
 
 	.input {
 		width: 100%;
@@ -530,90 +477,37 @@
 		background: rgba(255, 255, 255, 0.9);
 		transition: border-color 140ms ease, box-shadow 140ms ease, transform 90ms ease;
 	}
-	.input:focus {
-		outline: none;
-		border-color: rgba(59, 130, 246, 0.45);
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.20);
-	}
-	.input[readonly] {
-		background: rgba(248, 250, 252, 1);
-		color: rgba(15, 23, 42, 0.75);
-	}
+	.input:focus { outline: none; border-color: rgba(59, 130, 246, 0.45); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.20); }
+	.input[readonly] { background: rgba(248, 250, 252, 1); color: rgba(15, 23, 42, 0.75); }
 
-	.file {
-		font-size: 12px;
-	}
-
-	.help {
-		margin: 0;
-		font-size: 11px;
-		color: rgba(15, 23, 42, 0.55);
-	}
+	.file { font-size: 12px; }
 
 	.mono {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
-			monospace;
+		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 		font-size: 12px;
 	}
 
 	.thumbRow {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		margin-top: 6px;
-		padding: 10px;
-		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.08);
+		display: flex; align-items: center; gap: 10px;
+		margin-top: 6px; padding: 10px;
+		border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.08);
 		background: rgba(248, 250, 252, 0.85);
 	}
-
-	.thumb {
-		height: 54px;
-		width: 54px;
-		border-radius: 12px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
-		object-fit: cover;
-		background: #fff;
-	}
-
-	.thumbMeta {
-		display: grid;
-		gap: 2px;
-	}
-
-	.thumbTitle {
-		font-weight: 900;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.8);
-	}
-
-	.thumbSub {
-		font-size: 11px;
-		color: rgba(15, 23, 42, 0.55);
-	}
+	.thumb { height: 54px; width: 54px; border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.10); object-fit: cover; background: #fff; }
+	.thumbMeta { display: grid; gap: 2px; }
+	.thumbTitle { font-weight: 900; font-size: 12px; color: rgba(15, 23, 42, 0.8); }
+	.thumbSub { font-size: 11px; color: rgba(15, 23, 42, 0.55); }
 
 	.toggle {
-		display: flex;
-		align-items: center;
-		gap: 10px;
-		padding: 10px 12px;
-		border-radius: 14px;
+		display: flex; align-items: center; gap: 10px;
+		padding: 10px 12px; border-radius: 14px;
 		border: 1px solid rgba(15, 23, 42, 0.08);
 		background: rgba(248, 250, 252, 0.7);
 		width: fit-content;
 	}
+	.toggleText { font-size: 12px; font-weight: 800; color: rgba(15, 23, 42, 0.72); }
 
-	.toggleText {
-		font-size: 12px;
-		font-weight: 800;
-		color: rgba(15, 23, 42, 0.72);
-	}
-
-	.actions {
-		display: flex;
-		justify-content: flex-end;
-		margin-top: 4px;
-	}
+	.actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 
 	.btnPrimary {
 		padding: 10px 14px;
@@ -627,33 +521,11 @@
 		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
 		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.25);
 	}
-	.btnPrimary:hover {
-		filter: brightness(1.02);
-		transform: translateY(-1px);
-	}
-	.btnPrimary:active {
-		transform: translateY(0px);
-	}
-	.btnPrimary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		box-shadow: none;
-	}
+	.btnPrimary:hover { filter: brightness(1.02); transform: translateY(-1px); }
+	.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
 
-	/* Table */
-	.tableWrap {
-		overflow: auto;
-		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.08);
-	}
-
-	.table {
-		width: 100%;
-		border-collapse: separate;
-		border-spacing: 0;
-		font-size: 12px;
-	}
-
+	.tableWrap { overflow: auto; border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.08); }
+	.table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
 	.table thead th {
 		text-align: left;
 		font-size: 11px;
@@ -667,64 +539,33 @@
 		top: 0;
 		z-index: 1;
 	}
-
 	.table tbody td {
 		padding: 10px 12px;
 		border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 		background: rgba(255, 255, 255, 0.9);
 		vertical-align: middle;
 	}
+	.table tbody tr:hover td { background: rgba(248, 250, 252, 1); }
 
-	.table tbody tr:hover td {
-		background: rgba(248, 250, 252, 1);
-	}
-
-	.right {
-		text-align: right;
-		white-space: nowrap;
-	}
-
-	.strong {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.85);
-	}
+	.right { text-align: right; white-space: nowrap; }
+	.strong { font-weight: 900; color: rgba(15, 23, 42, 0.85); }
 
 	.imgBox {
-		height: 44px;
-		width: 44px;
-		border-radius: 12px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
-		overflow: hidden;
-		background: #fff;
+		height: 44px; width: 44px;
+		border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.10);
+		overflow: hidden; background: #fff;
 		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 	}
-
-	.img {
-		height: 100%;
-		width: 100%;
-		object-fit: cover;
-	}
+	.img { height: 100%; width: 100%; object-fit: cover; }
 
 	.pill {
-		display: inline-flex;
-		align-items: center;
-		gap: 6px;
-		padding: 4px 10px;
-		border-radius: 999px;
-		font-size: 11px;
-		font-weight: 900;
+		display: inline-flex; align-items: center; gap: 6px;
+		padding: 4px 10px; border-radius: 999px;
+		font-size: 11px; font-weight: 900;
 		border: 1px solid transparent;
 	}
-	.pillOn {
-		background: rgba(16, 185, 129, 0.10);
-		color: rgba(4, 120, 87, 1);
-		border-color: rgba(16, 185, 129, 0.22);
-	}
-	.pillOff {
-		background: rgba(15, 23, 42, 0.06);
-		color: rgba(15, 23, 42, 0.55);
-		border-color: rgba(15, 23, 42, 0.10);
-	}
+	.pillOn { background: rgba(16, 185, 129, 0.10); color: rgba(4, 120, 87, 1); border-color: rgba(16, 185, 129, 0.22); }
+	.pillOff { background: rgba(15, 23, 42, 0.06); color: rgba(15, 23, 42, 0.55); border-color: rgba(15, 23, 42, 0.10); }
 
 	.btnGhost {
 		padding: 8px 10px;
@@ -737,21 +578,42 @@
 		color: rgba(15, 23, 42, 0.75);
 		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
 	}
-	.btnGhost:hover {
-		background: rgba(255, 255, 255, 1);
+	.btnGhost:hover { background: rgba(255, 255, 255, 1); transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08); }
+	.btnGhost:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+
+	/* ✅ NEW: row actions layout */
+	.rowActions {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		justify-content: flex-end;
+	}
+
+	/* ✅ NEW: delete button styling */
+	.btnDanger {
+		padding: 8px 10px;
+		border-radius: 12px;
+		border: 1px solid rgba(239, 68, 68, 0.28);
+		background: rgba(254, 226, 226, 0.75);
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(153, 27, 27, 1);
+		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+	}
+	.btnDanger:hover {
+		background: rgba(254, 202, 202, 0.85);
+		border-color: rgba(239, 68, 68, 0.36);
 		transform: translateY(-1px);
-		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.10);
 	}
-	.btnGhost:active {
-		transform: translateY(0px);
-	}
-	.btnGhost:disabled {
+	.btnDanger:disabled {
 		opacity: 0.6;
 		cursor: not-allowed;
 		box-shadow: none;
+		transform: none;
 	}
 
-	/* States */
 	.state {
 		padding: 12px;
 		border-radius: 14px;
@@ -771,44 +633,22 @@
 	.skeleton {
 		height: 12px;
 		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			rgba(15, 23, 42, 0.06),
-			rgba(15, 23, 42, 0.10),
-			rgba(15, 23, 42, 0.06)
-		);
+		background: linear-gradient(90deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.06));
 		background-size: 200% 100%;
 		animation: shimmer 1.1s infinite linear;
 	}
 	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
+		0% { background-position: 200% 0; }
+		100% { background-position: -200% 0; }
 	}
 
-	/* Responsive */
 	@media (max-width: 980px) {
-		.createLayout {
-			grid-template-columns: 1fr;
-		}
-		.actions {
-			justify-content: stretch;
-		}
-		.btnPrimary {
-			width: 100%;
-		}
+		.createLayout { grid-template-columns: 1fr; }
+		.actions { justify-content: stretch; }
+		.btnPrimary { width: 100%; }
 	}
-
 	@media (max-width: 420px) {
-		.gridCell {
-			height: 20px;
-			width: 20px;
-		}
-		.fieldRow {
-			grid-template-columns: 1fr;
-		}
+		.gridCell { height: 20px; width: 20px; }
+		.fieldRow { grid-template-columns: 1fr; }
 	}
 </style>
