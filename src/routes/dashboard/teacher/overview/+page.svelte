@@ -125,53 +125,54 @@
 	}
 </script>
 
-<div class="min-h-screen bg-slate-100/70 px-6 py-10">
-	<div class="mx-auto max-w-6xl space-y-6">
-		<header class="flex items-center justify-between gap-4">
-			<div>
-				<h1 class="text-2xl font-semibold text-slate-900">Student designs</h1>
-				<p class="text-sm text-slate-600">
-					Overview of all saved layouts. Select a card to leave feedback.
-				</p>
+<div class="page">
+	<div class="container">
+		<header class="topbar">
+			<div class="topbarLeft">
+				<h1 class="title">Student designs</h1>
+				<p class="subtitle">Overview of all saved layouts. Leave quick, kid-friendly feedback.</p>
 			</div>
 
-			<a href="/dashboard/teacher" class="text-xs text-slate-600 underline hover:text-slate-900">
-				← Back to teacher dashboard
-			</a>
+			<a href="/dashboard/teacher" class="backlink">← Back to teacher dashboard</a>
 		</header>
 
 		{#if loading}
-			<p class="text-sm text-slate-600">Loading designs…</p>
+			<div class="state">
+				<div class="skeleton"></div>
+				<div class="skeleton"></div>
+				<div class="skeleton"></div>
+			</div>
 		{:else if error}
-			<p class="text-sm text-red-600">{error}</p>
+			<div class="state error">{error}</div>
 		{:else if designs.length === 0}
-			<p class="text-sm text-slate-600">
-				No designs found yet. Ask students to save their design first.
-			</p>
+			<div class="state empty">
+				<div class="emptyTitle">No designs yet</div>
+				<div class="emptyText">Ask students to save their design first. It will show up here automatically.</div>
+			</div>
 		{:else}
-			<div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+			<div class="grid">
 				{#each designs as design}
-					<article
-						class="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-md"
-					>
-						<!-- Small visual preview with simple asset blocks -->
-						<div class="h-32 bg-slate-200">
+					<article class="card">
+						<!-- preview -->
+						<div class="preview">
 							<div
-								class="relative h-full w-full overflow-hidden rounded-b-none bg-cover bg-center"
+								class="previewBg"
 								style={`background-image: url('${
 									design.backgroundImage ??
 									'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg'
 								}')`}
 							>
+								<div class="previewOverlay" aria-hidden="true"></div>
+
 								{#if design.rows && design.cols}
 									<div
-										class="absolute inset-1 grid"
-										style={`grid-template-columns: repeat(${design.cols}, 1fr); grid-template-rows: repeat(${design.rows}, 1fr); gap: 1px;`}
+										class="miniGrid"
+										style={`grid-template-columns: repeat(${design.cols}, 1fr); grid-template-rows: repeat(${design.rows}, 1fr);`}
 									>
 										{#if design.placedAssets && design.placedAssets.length > 0}
 											{#each design.placedAssets as item}
 												<div
-													class="rounded-[1px] bg-emerald-500/80 border border-emerald-900/40"
+													class="miniItem"
 													title={item.label ?? item.asset?.label}
 													style={`grid-column: ${(item.col ?? 0) + 1} / span ${
 														item.width ?? item.asset?.width ?? 1
@@ -183,79 +184,72 @@
 										{/if}
 									</div>
 								{/if}
+
+								<!-- top badges -->
+								<div class="badges">
+									<span class="badge">#{design.id}</span>
+									{#if design.feedback}
+										<span class="badge ok">Feedback ✔</span>
+									{/if}
+								</div>
 							</div>
 						</div>
 
-						<div class="flex flex-col gap-3 p-4">
-							<div class="flex items-center justify-between">
-								<h2 class="text-sm font-semibold text-slate-900">
-									Design #{design.id}
-								</h2>
+						<div class="content">
+							<div class="row">
+								<h2 class="cardTitle">Design #{design.id}</h2>
 								{#if design.created_at}
-									<span class="text-[11px] text-slate-500">
-										{shortDate(design.created_at)}
-									</span>
+									<span class="date">{shortDate(design.created_at)}</span>
 								{/if}
 							</div>
 
-							<!-- quick meta info -->
-							<div class="space-y-0.5 text-[11px] text-slate-500">
+							<!-- meta -->
+							<div class="meta">
 								{#if design.rows && design.cols}
-									<p>Grid: {design.rows} × {design.cols}</p>
+									<div><span class="metaKey">Grid</span> {design.rows} × {design.cols}</div>
 								{/if}
 								{#if design.class_code}
-									<p>Class: {design.class_code}</p>
+									<div><span class="metaKey">Class</span> {design.class_code}</div>
 								{/if}
 								{#if design.student_name}
-									<p>Student: {design.student_name}</p>
+									<div><span class="metaKey">Student</span> {design.student_name}</div>
 								{/if}
 								{#if design.placedAssets && design.placedAssets.length}
-									<p>Items placed: {design.placedAssets.length}</p>
-								{/if}
-								{#if design.feedback}
-									<p class="text-[10px] text-emerald-600">Has feedback ✔</p>
+									<div><span class="metaKey">Items</span> {design.placedAssets.length}</div>
 								{/if}
 							</div>
 
-							<!-- small chip list with asset labels + counts -->
+							<!-- chips -->
 							{#if design.placedAssets && design.placedAssets.length}
-								<div class="mt-1 flex flex-wrap gap-1">
+								<div class="chips">
 									{#each groupAssetsByLabel(design.placedAssets) as group}
-										<span
-											class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[2px] text-[10px] text-emerald-700"
-										>
-											{group.label} × {group.count}
-										</span>
+										<span class="chip">{group.label} × {group.count}</span>
 									{/each}
-                                </div>
+								</div>
 							{/if}
 
-							<!-- feedback box -->
-							<div class="mt-2">
-								<label class="mb-1 block text-xs font-medium text-slate-700">
-									Teacher feedback
-								</label>
+							<!-- feedback -->
+							<div class="feedback">
+								<label class="label">Teacher feedback</label>
 								<textarea
-									class="w-full resize-none rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+									class="textarea"
 									rows="3"
 									bind:value={feedbackByDesign[design.id]}
 									placeholder="Write short, kid-friendly feedback…"
 								></textarea>
+								<div class="hint">Keep it short: 1–2 sentences is enough.</div>
 							</div>
 
-							<div class="mt-1 flex items-center justify-between">
+							<div class="actions">
 								<button
-									class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
+									class="btnPrimary"
 									on:click={() => submitFeedback(design.id)}
 									disabled={savingFor === design.id}
 								>
 									{savingFor === design.id ? 'Saving…' : 'Save feedback'}
 								</button>
 
-								<a
-									href={`/dashboard/teacher/overview/${design.id}`}
-									class="text-[11px] text-emerald-600 hover:underline"
-								>
+								<a href={`/dashboard/teacher/overview/${design.id}`} class="link">
 									Open design →
 								</a>
 							</div>
@@ -266,3 +260,370 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	.page {
+		min-height: 100vh;
+		padding: 28px 16px 44px;
+		background:
+			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
+			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
+			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+	}
+
+	.container {
+		max-width: 1100px;
+		margin: 0 auto;
+		display: grid;
+		gap: 16px;
+	}
+
+	.topbar {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.topbarLeft {
+		display: grid;
+		gap: 6px;
+	}
+
+	.title {
+		margin: 0;
+		font-size: 22px;
+		letter-spacing: -0.02em;
+		font-weight: 900;
+		color: #0f172a;
+	}
+
+	.subtitle {
+		margin: 0;
+		font-size: 13px;
+		color: rgba(15, 23, 42, 0.66);
+	}
+
+	.backlink {
+		font-size: 13px;
+		color: rgba(15, 23, 42, 0.7);
+		text-decoration: none;
+		padding: 8px 10px;
+		border-radius: 10px;
+		border: 1px solid rgba(15, 23, 42, 0.10);
+		background: rgba(255, 255, 255, 0.6);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+		transition: transform 120ms ease, background-color 160ms ease;
+	}
+	.backlink:hover {
+		background: rgba(255, 255, 255, 0.9);
+		transform: translateY(-1px);
+	}
+	.backlink:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+	}
+
+	/* Grid of cards */
+	.grid {
+		display: grid;
+		gap: 18px;
+		grid-template-columns: repeat(1, minmax(0, 1fr));
+	}
+
+	@media (min-width: 768px) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+	@media (min-width: 1024px) {
+		.grid {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	.card {
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		border-radius: 18px;
+		border: 1px solid rgba(15, 23, 42, 0.10);
+		background: rgba(255, 255, 255, 0.92);
+		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+		transition: transform 140ms ease, box-shadow 160ms ease;
+	}
+
+	.card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+	}
+
+	.preview {
+		height: 140px;
+		background: rgba(15, 23, 42, 0.04);
+	}
+
+	.previewBg {
+		position: relative;
+		height: 100%;
+		width: 100%;
+		background-size: cover;
+		background-position: center;
+	}
+
+	.previewOverlay {
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.12) 100%),
+			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.20), transparent 60%),
+			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.14), transparent 55%);
+	}
+
+	.miniGrid {
+		position: absolute;
+		inset: 8px;
+		display: grid;
+		gap: 1px;
+		border-radius: 12px;
+		overflow: hidden;
+		background: rgba(255, 255, 255, 0.18);
+		border: 1px solid rgba(255, 255, 255, 0.22);
+	}
+
+	.miniItem {
+		border-radius: 2px;
+		background: rgba(16, 185, 129, 0.72);
+		border: 1px solid rgba(6, 95, 70, 0.35);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+	}
+
+	.badges {
+		position: absolute;
+		top: 10px;
+		left: 10px;
+		display: flex;
+		gap: 6px;
+		z-index: 2;
+	}
+
+	.badge {
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.78);
+		background: rgba(255, 255, 255, 0.82);
+		border: 1px solid rgba(15, 23, 42, 0.10);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+	}
+
+	.badge.ok {
+		color: rgba(4, 120, 87, 1);
+		background: rgba(16, 185, 129, 0.14);
+		border-color: rgba(16, 185, 129, 0.22);
+	}
+
+	.content {
+		padding: 14px;
+		display: grid;
+		gap: 10px;
+	}
+
+	.row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+	}
+
+	.cardTitle {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.85);
+	}
+
+	.date {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.55);
+		white-space: nowrap;
+	}
+
+	.meta {
+		display: grid;
+		gap: 4px;
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.62);
+	}
+
+	.metaKey {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.70);
+		margin-right: 6px;
+	}
+
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		border-radius: 999px;
+		padding: 4px 10px;
+		font-size: 11px;
+		font-weight: 900;
+		background: rgba(16, 185, 129, 0.10);
+		color: rgba(4, 120, 87, 1);
+		border: 1px solid rgba(16, 185, 129, 0.22);
+	}
+
+	.feedback {
+		display: grid;
+		gap: 6px;
+	}
+
+	.label {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.75);
+	}
+
+	.textarea {
+		width: 100%;
+		resize: none;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.14);
+		padding: 10px 10px;
+		font-size: 12px;
+		line-height: 1.4;
+		background: rgba(255, 255, 255, 0.92);
+		transition: border-color 140ms ease, box-shadow 140ms ease;
+	}
+	.textarea:focus {
+		outline: none;
+		border-color: rgba(16, 185, 129, 0.45);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20);
+	}
+
+	.hint {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.50);
+	}
+
+	.actions {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		margin-top: 2px;
+	}
+
+	.btnPrimary {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 10px 12px;
+		border-radius: 14px;
+		border: 1px solid rgba(16, 185, 129, 0.45);
+		background: rgba(16, 185, 129, 0.95);
+		color: #fff;
+		font-size: 12px;
+		font-weight: 900;
+		cursor: pointer;
+		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
+		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+	}
+	.btnPrimary:hover {
+		filter: brightness(1.02);
+		transform: translateY(-1px);
+	}
+	.btnPrimary:active {
+		transform: translateY(0px);
+	}
+	.btnPrimary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		box-shadow: none;
+	}
+
+	.link {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(5, 150, 105, 1);
+		text-decoration: none;
+	}
+	.link:hover {
+		text-decoration: underline;
+	}
+
+	/* States */
+	.state {
+		padding: 12px;
+		border-radius: 16px;
+		border: 1px dashed rgba(15, 23, 42, 0.18);
+		background: rgba(248, 250, 252, 0.85);
+		display: grid;
+		gap: 10px;
+	}
+	.state.error {
+		border-style: solid;
+		border-color: rgba(239, 68, 68, 0.22);
+		background: rgba(239, 68, 68, 0.06);
+		color: rgba(185, 28, 28, 1);
+		font-weight: 900;
+	}
+	.state.empty {
+		border-style: solid;
+		border-color: rgba(15, 23, 42, 0.10);
+	}
+	.emptyTitle {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.78);
+	}
+	.emptyText {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.skeleton {
+		height: 12px;
+		border-radius: 999px;
+		background: linear-gradient(
+			90deg,
+			rgba(15, 23, 42, 0.06),
+			rgba(15, 23, 42, 0.10),
+			rgba(15, 23, 42, 0.06)
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.1s infinite linear;
+	}
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@media (max-width: 520px) {
+		.actions {
+			flex-direction: column;
+			align-items: stretch;
+		}
+		.btnPrimary {
+			width: 100%;
+		}
+		.link {
+			text-align: center;
+		}
+	}
+</style>

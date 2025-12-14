@@ -148,81 +148,72 @@
 	}
 </script>
 
-<div class="min-h-screen bg-slate-100/70 px-4 py-8">
-	<div class="mx-auto max-w-6xl space-y-6">
-		<!-- header -->
-		<header class="flex items-center justify-between gap-4">
-			<div class="space-y-1">
-				<a
-					href="/dashboard/teacher/overview"
-					class="inline-flex items-center text-xs text-slate-600 hover:text-slate-900"
-				>
-					← Back to designs overview
-				</a>
+<div class="page">
+	<div class="container">
+		<header class="topbar">
+			<div class="topbarLeft">
+				<a href="/dashboard/teacher/overview" class="backlink">← Back to designs overview</a>
 
-				<h1 class="text-2xl font-semibold text-slate-900">Student design #{designId}</h1>
+				<h1 class="title">Student design #{designId}</h1>
 
 				{#if design && design.created_at}
-					<p class="text-xs text-slate-500">Saved at {shortDate(design.created_at)}</p>
+					<p class="subtitle">Saved at {shortDate(design.created_at)}</p>
 				{/if}
 			</div>
 		</header>
 
 		{#if loading}
-			<p class="text-sm text-slate-600">Loading design…</p>
+			<div class="state">
+				<div class="skeleton"></div>
+				<div class="skeleton"></div>
+				<div class="skeleton"></div>
+			</div>
 		{:else if error}
-			<p class="text-sm text-red-600">{error}</p>
+			<div class="state error">{error}</div>
 		{:else if !design}
-			<p class="text-sm text-slate-600">Design not found.</p>
+			<div class="state empty">
+				<div class="emptyTitle">Design not found</div>
+				<div class="emptyText">The design may have been deleted, or the link is wrong.</div>
+			</div>
 		{:else}
-			<div class="grid gap-6 lg:grid-cols-[2fr,1fr]">
-				<!-- LEFT: read-only grid preview + info -->
-				<section class="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-md">
-					<!-- title + grid toggle -->
-					<div class="mb-1 flex items-center justify-between gap-3">
-						<h2 class="text-sm font-semibold text-slate-900">Layout preview</h2>
+			<div class="layout">
+				<section class="card">
+					<div class="cardHeader">
+						<div class="cardHeaderLeft">
+							<h2 class="cardTitle">Layout preview</h2>
+							<p class="cardHint">Read-only preview of the student’s saved design.</p>
+						</div>
 
-						<button
-							type="button"
-							class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
-							on:click={() => (softGrid = !softGrid)}
-						>
+						<button type="button" class="toggleBtn" on:click={() => (softGrid = !softGrid)}>
 							{softGrid ? 'Grid: strong' : 'Grid: translucent'}
 						</button>
 					</div>
 
-					<div
-						class="relative h-[420px] w-full overflow-hidden rounded-xl border border-emerald-300 bg-slate-200 shadow-inner"
-					>
-						<!-- background image -->
+					<!-- ✅ SAME SIZE AS ORIGINAL -->
+					<div class="previewFrame">
 						<div
-							class="absolute inset-0 bg-cover bg-center"
+							class="previewBg"
 							style={`background-image: url('${
 								design.backgroundImage ??
 								'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg'
 							}')`}
 						></div>
+						<div class="previewOverlay" aria-hidden="true"></div>
 
 						{#if design.rows && design.cols}
-							<!-- LOCKED GRID -->
 							<div
-								class="relative z-[1] m-3 grid h-[calc(100%-1.5rem)] w-[calc(100%-1.5rem)]"
+								class="lockedGrid"
 								style={`grid-template-columns: repeat(${design.cols}, minmax(0, 1fr)); grid-template-rows: repeat(${design.rows}, minmax(0, 1fr)); gap: 2px;`}
 							>
-								<!-- grid cells -->
 								{#each Array.from({ length: design.rows * design.cols }) as _, i}
-									<div
-										class="rounded-[4px] border border-emerald-500/40 bg-emerald-100/25"
-										style={`opacity: ${softGrid ? 0.25 : 0.9};`}
-									/>
+									<div class="cell" style={`opacity: ${softGrid ? 0.25 : 0.9};`} />
 								{/each}
 
-								<!-- placed assets, read-only -->
 								{#if design.placedAssets && design.placedAssets.length > 0}
 									{#each design.placedAssets as item (item.instanceId ?? `${item.row}-${item.col}-${item.label}`)}
 										{@const size = getRotatedSize(item)}
 										<div
-											class="rounded-[4px] shadow-md"
+											class="placed"
 											title={item.label ?? item.asset?.label}
 											style={`grid-column: ${(item.col ?? 0) + 1} / span ${
 												size.width
@@ -238,79 +229,56 @@
 						{/if}
 					</div>
 
-					<!-- meta info -->
-					<div class="mt-2 grid gap-4 text-xs text-slate-600 sm:grid-cols-2">
-						<div class="space-y-1">
-							<p><span class="font-semibold">Design ID:</span> {design.id}</p>
+					<div class="metaGrid">
+						<div class="metaBlock">
+							<div class="metaTitle">Details</div>
+							<p><span class="metaKey">Design ID</span> {design.id}</p>
 							{#if design.rows && design.cols}
-								<p>
-									<span class="font-semibold">Grid:</span>
-									{design.rows} × {design.cols}
-								</p>
+								<p><span class="metaKey">Grid</span> {design.rows} × {design.cols}</p>
 							{/if}
 							{#if design.class_code}
-								<p><span class="font-semibold">Class:</span> {design.class_code}</p>
+								<p><span class="metaKey">Class</span> {design.class_code}</p>
 							{/if}
 							{#if design.student_name}
-								<p><span class="font-semibold">Student:</span> {design.student_name}</p>
+								<p><span class="metaKey">Student</span> {design.student_name}</p>
 							{/if}
 						</div>
 
-						<div class="space-y-1">
-							<p class="font-semibold text-slate-700">Asset overview</p>
+						<div class="metaBlock">
+							<div class="metaTitle">Asset overview</div>
 							{#if design.placedAssets && design.placedAssets.length > 0}
-								<p>Total placed items: {design.placedAssets.length}</p>
-								<div class="mt-1 flex flex-wrap gap-1">
+								<p><span class="metaKey">Total items</span> {design.placedAssets.length}</p>
+								<div class="chips">
 									{#each groupAssetsByLabel(design.placedAssets) as group}
-										<span
-											class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-[2px] text-[10px] text-emerald-700"
-										>
-											{group.label} × {group.count}
-										</span>
+										<span class="chip">{group.label} × {group.count}</span>
 									{/each}
 								</div>
 							{:else}
-								<p>No placed items stored in this design.</p>
+								<p class="muted">No placed items stored in this design.</p>
 							{/if}
 						</div>
 					</div>
 
-					<!-- optional: raw JSON for debugging -->
-					<details class="mt-3 text-xs">
-						<summary class="cursor-pointer text-slate-500">
-							Show raw design JSON (debug)
-						</summary>
-						<pre
-							class="mt-2 max-h-64 overflow-auto rounded-lg bg-slate-900 p-3 text-[10px] text-slate-100"
-						>
-{JSON.stringify(design, null, 2)}
-                        </pre>
-					</details>
+				
 				</section>
 
-				<!-- RIGHT: feedback panel -->
-				<aside
-					class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-md"
-				>
-					<h2 class="text-sm font-semibold text-slate-900">Teacher feedback</h2>
-
-					<p class="text-xs text-slate-600">
-						Give short, concrete feedback that a student can understand. For example:
-						<em>"Nice use of trees in the corners, maybe add more benches near the field."</em>
-					</p>
+				<aside class="side">
+					<div class="sideHeader">
+						<h2 class="sideTitle">Teacher feedback</h2>
+						<p class="sideHint">
+							Short and concrete works best. Example:
+							<em>“Nice use of trees in the corners, maybe add benches near the field.”</em>
+						</p>
+					</div>
 
 					<textarea
-						class="w-full flex-1 resize-none rounded-lg border border-slate-300 px-2 py-1.5 text-xs focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400 focus:outline-none"
+						class="textarea"
 						rows="10"
 						bind:value={feedbackText}
 						placeholder="Write your feedback here…"
 					></textarea>
 
-					<button
-						class="inline-flex items-center justify-center rounded-lg bg-emerald-500 px-3 py-2 text-xs font-medium text-white hover:bg-emerald-600 disabled:cursor-not-allowed disabled:opacity-50"
-						on:click={saveFeedback}
-						disabled={savingFeedback}
-					>
+					<button class="btnPrimary" on:click={saveFeedback} disabled={savingFeedback}>
 						{savingFeedback ? 'Saving…' : 'Save feedback'}
 					</button>
 				</aside>
@@ -318,3 +286,404 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	.page {
+		min-height: 100vh;
+		padding: 28px 16px 44px;
+		background:
+			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
+			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
+			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+	}
+
+	.container {
+		max-width: 1100px;
+		margin: 0 auto;
+		display: grid;
+		gap: 16px;
+	}
+
+	.topbar {
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.topbarLeft {
+		display: grid;
+		gap: 6px;
+	}
+
+	.backlink {
+		width: fit-content;
+		font-size: 13px;
+		color: rgba(15, 23, 42, 0.72);
+		text-decoration: none;
+		padding: 8px 10px;
+		border-radius: 10px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(255, 255, 255, 0.6);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
+		transition: transform 120ms ease, background-color 160ms ease;
+	}
+	.backlink:hover {
+		background: rgba(255, 255, 255, 0.9);
+		transform: translateY(-1px);
+	}
+	.backlink:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+	}
+
+	.title {
+		margin: 0;
+		font-size: 22px;
+		letter-spacing: -0.02em;
+		font-weight: 900;
+		color: #0f172a;
+	}
+
+	.subtitle {
+		margin: 0;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.layout {
+		display: grid;
+		gap: 18px;
+		grid-template-columns: 1fr;
+	}
+
+	@media (min-width: 1024px) {
+		.layout {
+			grid-template-columns: 2fr 1fr;
+			align-items: start;
+		}
+	}
+
+	.card {
+		border-radius: 18px;
+		background: rgba(255, 255, 255, 0.92);
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+		padding: 14px;
+		display: grid;
+		gap: 14px;
+	}
+
+	.cardHeader {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.cardHeaderLeft {
+		display: grid;
+		gap: 4px;
+	}
+
+	.cardTitle {
+		margin: 0;
+		font-size: 13px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: rgba(15, 23, 42, 0.72);
+		font-weight: 900;
+	}
+
+	.cardHint {
+		margin: 0;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.toggleBtn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 8px 10px;
+		border-radius: 12px;
+		border: 1px solid rgba(16, 185, 129, 0.22);
+		background: rgba(16, 185, 129, 0.1);
+		color: rgba(4, 120, 87, 1);
+		font-size: 12px;
+		font-weight: 900;
+		cursor: pointer;
+		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
+	}
+	.toggleBtn:hover {
+		background: rgba(16, 185, 129, 0.14);
+		transform: translateY(-1px);
+	}
+	.toggleBtn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+	}
+
+	/* ✅ EXACT SAME PREVIEW SIZE AS ORIGINAL */
+	.previewFrame {
+		position: relative;
+		height: 420px;
+		width: 100%;
+		overflow: hidden;
+		border-radius: 18px;
+		border: 1px solid rgba(16, 185, 129, 0.26);
+		background: rgba(15, 23, 42, 0.04);
+		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+	}
+
+	/* ✅ EXACT SAME GRID INSET AS ORIGINAL m-3 */
+	.lockedGrid {
+		position: relative;
+		z-index: 1;
+		margin: 12px;
+		height: calc(100% - 24px);
+		width: calc(100% - 24px);
+		display: grid;
+	}
+
+	.previewBg {
+		position: absolute;
+		inset: 0;
+		background-size: cover;
+		background-position: center;
+		filter: saturate(1.02) contrast(1.02);
+	}
+
+	.previewOverlay {
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.1) 100%),
+			radial-gradient(700px 300px at 20% 10%, rgba(59, 130, 246, 0.16), transparent 60%),
+			radial-gradient(700px 300px at 90% 10%, rgba(34, 197, 94, 0.12), transparent 55%);
+	}
+
+	.cell {
+		border-radius: 6px;
+		border: 1px solid rgba(16, 185, 129, 0.35);
+		background: rgba(16, 185, 129, 0.08);
+	}
+
+	.placed {
+		border-radius: 8px;
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		background-color: rgba(255, 255, 255, 0.2);
+	}
+
+	.metaGrid {
+		display: grid;
+		gap: 12px;
+		grid-template-columns: 1fr;
+	}
+
+	@media (min-width: 640px) {
+		.metaGrid {
+			grid-template-columns: 1fr 1fr;
+		}
+	}
+
+	.metaBlock {
+		border-radius: 16px;
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		background: rgba(248, 250, 252, 0.75);
+		padding: 12px;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.65);
+		display: grid;
+		gap: 6px;
+	}
+
+	.metaTitle {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.78);
+	}
+
+	.metaKey {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.7);
+		margin-right: 8px;
+	}
+
+	.muted {
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.chips {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		margin-top: 4px;
+	}
+
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		border-radius: 999px;
+		padding: 4px 10px;
+		font-size: 11px;
+		font-weight: 900;
+		background: rgba(16, 185, 129, 0.1);
+		color: rgba(4, 120, 87, 1);
+		border: 1px solid rgba(16, 185, 129, 0.22);
+	}
+
+	.debugSummary {
+		cursor: pointer;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+		user-select: none;
+	}
+
+	.debugPre {
+		margin: 10px 0 0;
+		max-height: 260px;
+		overflow: auto;
+		border-radius: 14px;
+		background: rgba(15, 23, 42, 0.92);
+		padding: 12px;
+		font-size: 11px;
+		line-height: 1.35;
+		color: rgba(248, 250, 252, 1);
+	}
+
+	.side {
+		border-radius: 18px;
+		background: rgba(255, 255, 255, 0.92);
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
+		padding: 14px;
+		display: grid;
+		gap: 10px;
+		position: sticky;
+		top: 16px;
+		align-self: start;
+	}
+
+	.sideHeader {
+		display: grid;
+		gap: 6px;
+	}
+
+	.sideTitle {
+		margin: 0;
+		font-size: 13px;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: rgba(15, 23, 42, 0.72);
+		font-weight: 900;
+	}
+
+	.sideHint {
+		margin: 0;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.textarea {
+		width: 100%;
+		resize: none;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.14);
+		padding: 10px 10px;
+		font-size: 12px;
+		line-height: 1.4;
+		background: rgba(255, 255, 255, 0.92);
+		transition: border-color 140ms ease, box-shadow 140ms ease;
+	}
+	.textarea:focus {
+		outline: none;
+		border-color: rgba(16, 185, 129, 0.45);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+	}
+
+	.btnPrimary {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 10px 12px;
+		border-radius: 14px;
+		border: 1px solid rgba(16, 185, 129, 0.45);
+		background: rgba(16, 185, 129, 0.95);
+		color: #fff;
+		font-size: 12px;
+		font-weight: 900;
+		cursor: pointer;
+		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
+		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+	}
+	.btnPrimary:hover {
+		filter: brightness(1.02);
+		transform: translateY(-1px);
+	}
+	.btnPrimary:active {
+		transform: translateY(0px);
+	}
+	.btnPrimary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		box-shadow: none;
+	}
+
+	.state {
+		padding: 12px;
+		border-radius: 16px;
+		border: 1px dashed rgba(15, 23, 42, 0.18);
+		background: rgba(248, 250, 252, 0.85);
+		display: grid;
+		gap: 10px;
+	}
+	.state.error {
+		border-style: solid;
+		border-color: rgba(239, 68, 68, 0.22);
+		background: rgba(239, 68, 68, 0.06);
+		color: rgba(185, 28, 28, 1);
+		font-weight: 900;
+	}
+	.state.empty {
+		border-style: solid;
+		border-color: rgba(15, 23, 42, 0.1);
+	}
+
+	.emptyTitle {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.78);
+	}
+	.emptyText {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	.skeleton {
+		height: 12px;
+		border-radius: 999px;
+		background: linear-gradient(
+			90deg,
+			rgba(15, 23, 42, 0.06),
+			rgba(15, 23, 42, 0.1),
+			rgba(15, 23, 42, 0.06)
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.1s infinite linear;
+	}
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
+
+	@media (max-width: 520px) {
+		.side {
+			position: static;
+		}
+	}
+</style>
