@@ -4,8 +4,8 @@
 	// --- API base ---
 	const API_BASE = 'http://localhost';
 	const ASSET_BASE = API_BASE; // for images
-	// --- ASSETS FROM BACKEND ---
 
+	// --- ASSETS FROM BACKEND ---
 	type Asset = {
 		id: number;
 		slug: string;
@@ -13,21 +13,20 @@
 		image_url: string;
 		width: number;
 		height: number;
+		is_available?: boolean | number;
 	};
 
 	let assets: Asset[] = [];
 	let assetsLoading = true;
 	let assetsError = '';
+
 	onMount(async () => {
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) {
-				throw new Error(`Failed to load assets (${res.status})`);
-			}
+			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
 
 			const data = await res.json();
 			const allAssets = Array.isArray(data) ? data : [];
-
 			assets = allAssets.filter((a) => a.is_available === true || a.is_available === 1);
 		} catch (e: any) {
 			console.error(e);
@@ -38,7 +37,6 @@
 	});
 
 	// --- SAVE DESIGN: payload builder ---
-
 	const rows = 18;
 	const cols = 22;
 
@@ -56,11 +54,46 @@
 	let placedAssets: PlacedAsset[] = [];
 	let nextInstanceId = 1;
 
+	// ✅ student session helper (class + name)
+	type StudentSession = {
+		class_id: number;
+		student_name: string;
+		code?: string;
+		created_at?: number;
+	};
+
+	function getStudentSession(): StudentSession | null {
+		try {
+			const raw = localStorage.getItem('student_session');
+			if (!raw) return null;
+
+			const s = JSON.parse(raw);
+			if (!s?.class_id || !s?.student_name) return null;
+
+			return {
+				class_id: Number(s.class_id),
+				student_name: String(s.student_name),
+				code: s?.code ? String(s.code) : undefined,
+				created_at: s?.created_at ? Number(s.created_at) : undefined
+			};
+		} catch {
+			return null;
+		}
+	}
+
 	function buildDesignPayload() {
+		const session = getStudentSession();
+
 		return {
 			rows,
 			cols,
 			backgroundImage,
+
+			// ✅ attach class + student name to the design
+			class_id: session?.class_id ?? null,
+			student_name: session?.student_name ?? null,
+			class_code: session?.code ? session.code.toUpperCase() : null,
+
 			placedAssets: placedAssets.map((p) => ({
 				instanceId: p.instanceId,
 				assetId: p.asset.id, // DB id
@@ -92,7 +125,6 @@
 				headers: {
 					'Content-Type': 'application/json',
 					Accept: 'application/json'
-					// no Authorization yet, routes are public for now
 				},
 				body: JSON.stringify(payload)
 			});
@@ -159,13 +191,11 @@
 
 	// drag source type
 	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
-
 	let dragSource: DragSource | null = null;
 
 	let gridEl: HTMLDivElement | null = null;
 
 	// ===== helpers =====
-
 	function pushHistory() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
 		history = [...history, snapshot];
@@ -195,16 +225,9 @@
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
 
 		if (normalizedRotation === 90 || normalizedRotation === 270) {
-			return {
-				width: asset.height,
-				height: asset.width
-			};
+			return { width: asset.height, height: asset.width };
 		}
-
-		return {
-			width: asset.width,
-			height: asset.height
-		};
+		return { width: asset.width, height: asset.height };
 	}
 
 	function countPlaced(assetId: number): number {
@@ -212,13 +235,11 @@
 	}
 
 	// ===== drag from palette =====
-
 	function handlePaletteDragStart(asset: Asset) {
 		dragSource = { type: 'palette', asset };
 	}
 
 	// ===== drag existing placed asset =====
-
 	function handlePlacedDragStart(instanceId: number) {
 		dragSource = { type: 'placed', instanceId };
 	}
@@ -239,7 +260,6 @@
 		if (!source || !gridEl) return;
 
 		const rect = gridEl.getBoundingClientRect();
-
 		const x = event.clientX - rect.left;
 		const y = event.clientY - rect.top;
 
@@ -322,12 +342,15 @@
 <div class="designer-page">
 	<!-- SIDEBAR: assets -->
 	<aside class="sidebar">
-		<h2 class="sidebar-title">Your Toolbox</h2>
+		<div class="sidebar-top">
+			<h2 class="sidebar-title">Your Toolbox</h2>
+			<p class="sidebar-subtitle">Sleep items naar het rooster. Dubbelklik om te draaien.</p>
+		</div>
 
 		{#if assetsLoading}
 			<p class="px-2 text-xs text-slate-500">Assets worden geladen…</p>
 		{:else if assetsError}
-			<p class="px-2 text-xs text-red-500">{assetsError}</p>
+			<p class="px-2 text-xs text-red-600">{assetsError}</p>
 		{:else}
 			<div class="asset-list">
 				{#each assets as asset}
@@ -338,15 +361,17 @@
 						on:dragend={handleDragEnd}
 					>
 						<div class="asset-main">
-							<img
-								src={`${ASSET_BASE}${asset.image_url}`}
-								alt={asset.label}
-								class="h-full w-full object-cover"
-							/>
+							<div class="asset-thumb">
+								<img src={`${ASSET_BASE}${asset.image_url}`} alt={asset.label} />
+							</div>
 
-							<span class="asset-label">{asset.label}</span>
+							<div class="asset-text">
+								<span class="asset-label">{asset.label}</span>
+								<span class="asset-size">{asset.width}×{asset.height}</span>
+							</div>
 						</div>
-						<span class="asset-count">{countPlaced(asset.id)}</span>
+
+						<span class="asset-count" title="Aantal geplaatst">{countPlaced(asset.id)}</span>
 					</div>
 				{/each}
 			</div>
@@ -366,16 +391,19 @@
 
 	<!-- MAIN: grid -->
 	<main class="grid-wrapper">
-		<h2 class="grid-title">Jouw ontwerp</h2>
+		<div class="grid-header">
+			<div>
+				<h2 class="grid-title">Jouw ontwerp</h2>
+				<p class="grid-subtitle">Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.</p>
+			</div>
+		</div>
 
 		{#if showTutorial}
 			<div class="tutorial-backdrop">
 				<div class="tutorial-card mascot-card">
 					<div class="tutorial-header">
 						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>
-							✕
-						</button>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>✕</button>
 					</div>
 
 					<div class="mascot-layout">
@@ -390,24 +418,12 @@
 							</div>
 
 							<div class="bubble-controls">
-								<button class="btn secondary" type="button" on:click={prevBubble}>
-									← Vorige
-								</button>
-
-								<span class="bubble-counter">
-									{currentBubble + 1} / {mascotBubbles.length}
-								</span>
-
-								<button class="btn secondary" type="button" on:click={nextBubble}>
-									Volgende →
-								</button>
+								<button class="btn secondary" type="button" on:click={prevBubble}>← Vorige</button>
+								<span class="bubble-counter">{currentBubble + 1} / {mascotBubbles.length}</span>
+								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button>
 							</div>
 
-							<button
-								type="button"
-								class="btn primary mascot-start-btn"
-								on:click={() => (showTutorial = false)}
-							>
+							<button type="button" class="btn primary mascot-start-btn" on:click={() => (showTutorial = false)}>
 								Ik snap het, laten we ontwerpen! 🎨
 							</button>
 						</div>
@@ -418,38 +434,24 @@
 
 		<!-- control buttons -->
 		<div class="toolbar">
-			<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>
-				❓ Tutorial
-			</button>
+			<div class="toolbar-left">
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Tutorial</button>
 
-			<button class="btn secondary" type="button" on:click={saveDesignToConsole}>
-				💾 Save design (console)
-			</button>
+				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
+					{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+				</button>
 
-			<button class="btn secondary" type="button" on:click={saveDesignToBackend}>
-				📡 Save design (backend)
-			</button>
+				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
+				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Reset</button>
+			</div>
 
-			<button class="btn secondary" type="button" on:click={resetGrid}> 🧹 Reset grid </button>
-
-			<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>
-				↩️ Undo
-			</button>
-
-			<button
-				type="button"
-				class="btn secondary"
-				on:click={toggleDeleteMode}
-				class:active={deleteMode}
-			>
-				{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
-			</button>
+			<div class="toolbar-right">
+				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
+				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Save</button>
+			</div>
 		</div>
 
-		<div
-			class="design-area"
-			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
-		>
+		<div class="design-area" style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}>
 			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
 				{#each Array.from({ length: rows * cols }) as _}
 					<div class="grid-cell"></div>
@@ -472,11 +474,15 @@
 					></div>
 				{/each}
 			</div>
+
+			{#if deleteMode}
+				<div class="delete-banner">Delete mode is aan — klik op een object om het te verwijderen.</div>
+			{/if}
 		</div>
 
 		<p class="hint">
 			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik verwijdert.
+			Delete-modus + klik verwijdert.  
 		</p>
 	</main>
 </div>
@@ -491,35 +497,340 @@
 		background-attachment: fixed;
 	}
 
+	/* layout */
 	.designer-page {
 		display: grid;
-		grid-template-columns: 260px 1fr;
+		grid-template-columns: 280px 1fr;
 		min-height: calc(100vh - 5rem);
-		gap: 1.5rem;
+		gap: 1.25rem;
 		padding: 1.5rem 2rem;
 		background: transparent;
 	}
 
+	/* sidebar */
 	.sidebar {
-		background: #f9fafb;
-		border-radius: 1rem;
+		background: rgba(249, 250, 251, 0.92);
+		border-radius: 1.1rem;
 		padding: 1rem;
-		border: 1px solid #e5e7eb;
+		border: 1px solid rgba(229, 231, 235, 0.9);
+		box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+		backdrop-filter: blur(10px);
+		-webkit-backdrop-filter: blur(10px);
 		display: flex;
 		flex-direction: column;
 		gap: 0.75rem;
 	}
 
+	.sidebar-top {
+		padding: 0.25rem 0.25rem 0.5rem;
+	}
+
 	.sidebar-title {
-		font-weight: 600;
-		font-size: 1.1rem;
+		margin: 0;
+		font-weight: 800;
+		font-size: 1.05rem;
 		padding: 0.75rem 1rem;
 		border-radius: 0.9rem;
 		background: linear-gradient(to right, #f472b6, #fb923c);
 		color: white;
 		text-align: center;
+		box-shadow: 0 14px 26px rgba(244, 114, 182, 0.22);
 	}
 
+	.sidebar-subtitle {
+		margin: 0.5rem 0.25rem 0;
+		font-size: 0.8rem;
+		color: rgba(17, 24, 39, 0.7);
+	}
+
+	.asset-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.65rem;
+		padding: 0.25rem;
+	}
+
+	.asset {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0.55rem 0.65rem;
+		border-radius: 0.9rem;
+		cursor: grab;
+		color: #111827;
+		font-weight: 600;
+		background: rgba(255, 255, 255, 0.95);
+		border: 1px solid rgba(229, 231, 235, 0.95);
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+		transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+	}
+
+	.asset:hover {
+		transform: translateY(-1px);
+		border-color: rgba(16, 185, 129, 0.35);
+		box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
+	}
+
+	.asset:active {
+		cursor: grabbing;
+		transform: scale(0.98);
+		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
+	}
+
+	.asset-main {
+		display: flex;
+		align-items: center;
+		gap: 0.6rem;
+		min-width: 0;
+	}
+
+	.asset-thumb {
+		width: 34px;
+		height: 34px;
+		border-radius: 0.75rem;
+		overflow: hidden;
+		border: 1px solid rgba(229, 231, 235, 1);
+		background: rgba(249, 250, 251, 1);
+		flex: 0 0 auto;
+	}
+
+	.asset-thumb img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
+	}
+
+	.asset-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.asset-label {
+		font-size: 0.9rem;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.asset-size {
+		font-size: 0.75rem;
+		color: rgba(17, 24, 39, 0.55);
+	}
+
+	.asset-count {
+		min-width: 1.7rem;
+		text-align: center;
+		font-size: 0.75rem;
+		background: rgba(229, 231, 235, 0.8);
+		border: 1px solid rgba(229, 231, 235, 1);
+		border-radius: 9999px;
+		padding: 0.12rem 0.5rem;
+		color: #374151;
+		font-weight: 800;
+		flex: 0 0 auto;
+	}
+
+	.how-to {
+		margin-top: auto;
+		margin-bottom: 0.25rem;
+		padding: 0.8rem 0.9rem;
+		background: rgba(236, 253, 245, 0.92);
+		border-radius: 0.95rem;
+		border: 1px solid rgba(167, 243, 208, 0.95);
+		box-shadow: inset 0 0 0 1px rgba(16, 185, 129, 0.06);
+	}
+
+	.how-to h3 {
+		font-size: 0.85rem;
+		font-weight: 800;
+		color: #059669;
+		margin: 0 0 0.3rem 0;
+	}
+
+	.how-to ul {
+		margin: 0;
+		font-size: 0.75rem;
+		color: #4b5563;
+		padding-left: 1rem;
+		list-style: disc;
+	}
+
+	/* main */
+	.grid-wrapper {
+		display: flex;
+		flex-direction: column;
+		gap: 0.8rem;
+		align-items: center;
+	}
+
+	.grid-header {
+		width: 100%;
+		display: flex;
+		align-items: flex-end;
+		justify-content: space-between;
+	}
+
+	.grid-title {
+		margin: 0;
+		font-weight: 900;
+		font-size: 1.25rem;
+		color: #111827;
+	}
+
+	.grid-subtitle {
+		margin: 0.2rem 0 0;
+		font-size: 0.85rem;
+		color: rgba(17, 24, 39, 0.65);
+	}
+
+	.toolbar {
+		width: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.6rem;
+		flex-wrap: wrap;
+		margin-bottom: 0.2rem;
+	}
+
+	.toolbar-left,
+	.toolbar-right {
+		display: flex;
+		gap: 0.5rem;
+		flex-wrap: wrap;
+	}
+
+	.btn {
+		border-radius: 0.85rem;
+		padding: 0.45rem 0.85rem;
+		font-size: 0.85rem;
+		border: 1px solid transparent;
+		cursor: pointer;
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		font-weight: 800;
+		transition: transform 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease,
+			border-color 0.12s ease, opacity 0.12s ease;
+		user-select: none;
+	}
+
+	.btn.secondary {
+		background: rgba(255, 255, 255, 0.88);
+		color: #111827;
+		border-color: rgba(229, 231, 235, 0.95);
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
+	}
+
+	.btn.secondary:hover:enabled {
+		transform: translateY(-1px);
+		border-color: rgba(16, 185, 129, 0.35);
+	}
+
+	.btn.secondary:disabled {
+		opacity: 0.45;
+		cursor: default;
+		box-shadow: none;
+	}
+
+	.btn.primary {
+		background: rgba(16, 185, 129, 0.95);
+		color: white;
+		border-color: rgba(16, 185, 129, 0.5);
+		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+	}
+
+	.btn.primary:hover:enabled {
+		transform: translateY(-1px);
+		filter: brightness(1.02);
+	}
+
+	.btn.active {
+		background: rgba(254, 202, 202, 0.95);
+		border-color: rgba(239, 68, 68, 0.35);
+		color: #991b1b;
+		box-shadow: 0 12px 22px rgba(239, 68, 68, 0.14);
+	}
+
+	/* ✅ KEEP MAP/GRID SIZE EXACTLY THE SAME AS YOUR ORIGINAL */
+	.design-area {
+		position: relative;
+		width: 1000px;
+		height: 520px;
+		max-width: 100%;
+		overflow: hidden;
+
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+
+		border-radius: 1.1rem;
+		border: 2px solid rgba(34, 197, 94, 0.6);
+		padding: 6px;
+
+		box-shadow:
+			0 20px 40px rgba(15, 23, 42, 0.55),
+			inset 0 0 0 1px rgba(16, 185, 129, 0.18);
+		background-color: transparent;
+	}
+
+	.grid {
+		width: 100%;
+		height: 100%;
+		display: grid;
+		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+		grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+		gap: 2px;
+		background: transparent;
+		position: relative;
+	}
+
+	.grid-cell {
+		background: rgba(249, 250, 251, 0.32);
+		border-radius: 0.35rem;
+		border: 1px solid rgba(34, 197, 94, 0.42);
+	}
+
+	.placed-asset {
+		background-size: cover;
+		background-position: center;
+		background-repeat: no-repeat;
+		border-radius: 0.35rem;
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+		border: 1px solid rgba(255, 255, 255, 0.18);
+	}
+
+	.placed-asset:hover {
+		box-shadow: 0 14px 30px rgba(15, 23, 42, 0.28);
+	}
+
+	.delete-banner {
+		position: absolute;
+		left: 12px;
+		right: 12px;
+		bottom: 12px;
+		padding: 10px 12px;
+		border-radius: 12px;
+		background: rgba(254, 226, 226, 0.92);
+		border: 1px solid rgba(239, 68, 68, 0.28);
+		color: rgba(153, 27, 27, 1);
+		font-weight: 900;
+		font-size: 0.85rem;
+		box-shadow: 0 12px 22px rgba(15, 23, 42, 0.18);
+	}
+
+	.hint {
+		width: 100%;
+		font-size: 0.85rem;
+		color: rgba(17, 24, 39, 0.7);
+		margin-top: 0.5rem;
+	}
+
+	/* tutorial modal */
 	.tutorial-backdrop {
 		position: fixed;
 		inset: 0;
@@ -528,6 +839,7 @@
 		align-items: center;
 		justify-content: center;
 		z-index: 50;
+		padding: 14px;
 	}
 
 	.tutorial-card.mascot-card {
@@ -553,8 +865,9 @@
 
 	.tutorial-header h3 {
 		font-size: 1.2rem;
-		font-weight: 600;
+		font-weight: 800;
 		color: #111827;
+		margin: 0;
 	}
 
 	.tutorial-close {
@@ -567,7 +880,6 @@
 		border-radius: 9999px;
 		color: #6b7280;
 	}
-
 	.tutorial-close:hover {
 		background: #e5e7eb;
 		color: #111827;
@@ -604,7 +916,7 @@
 		border-radius: 1rem;
 		border: 1px solid #e5e7eb;
 		padding: 0.75rem 1rem;
-		box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
 	}
 
 	.speech-bubble::before {
@@ -616,7 +928,6 @@
 		border-style: solid;
 		border-color: transparent #ffffff transparent transparent;
 	}
-
 	.speech-bubble::after {
 		content: '';
 		position: absolute;
@@ -629,14 +940,15 @@
 
 	.speech-bubble h4 {
 		font-size: 1rem;
-		font-weight: 600;
+		font-weight: 900;
 		color: #111827;
-		margin-bottom: 0.25rem;
+		margin: 0 0 0.25rem 0;
 	}
 
 	.speech-bubble p {
 		font-size: 0.9rem;
 		color: #4b5563;
+		margin: 0;
 	}
 
 	.bubble-controls {
@@ -648,6 +960,7 @@
 	.bubble-counter {
 		font-size: 0.8rem;
 		color: #6b7280;
+		font-weight: 800;
 	}
 
 	.mascot-start-btn {
@@ -655,13 +968,11 @@
 		margin-top: 0.25rem;
 	}
 
-	.btn.primary {
-		background: #16a34a;
-		color: white;
-	}
-
-	.btn.primary:hover {
-		background: #15803d;
+	@media (max-width: 900px) {
+		.designer-page {
+			grid-template-columns: 1fr;
+			padding: 1.25rem 1rem;
+		}
 	}
 
 	@media (max-width: 640px) {
@@ -676,195 +987,6 @@
 
 		.mascot-col {
 			order: -1;
-		}
-	}
-
-	.asset-list {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-	}
-
-	.asset {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0.75rem;
-		border-radius: 0.75rem;
-		cursor: grab;
-		color: #111827;
-		font-weight: 500;
-		box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-		transition:
-			transform 0.1s ease,
-			box-shadow 0.1s ease;
-		background-color: white;
-	}
-
-	.asset-main {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-	}
-
-	.asset-icon {
-		width: 32px;
-		height: 32px;
-		border-radius: 0.5rem;
-		object-fit: cover;
-	}
-
-	.asset-label {
-		font-size: 0.9rem;
-	}
-
-	.asset-count {
-		min-width: 1.5rem;
-		text-align: center;
-		font-size: 0.75rem;
-		background: #e5e7eb;
-		border-radius: 9999px;
-		padding: 0.1rem 0.45rem;
-		color: #374151;
-	}
-
-	.asset:active {
-		cursor: grabbing;
-		transform: scale(0.96);
-		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
-	}
-
-	.how-to {
-		margin-top: auto;
-		margin-bottom: 0.25rem;
-		padding: 0.75rem 0.9rem;
-		background: #ecfdf5;
-		border-radius: 0.75rem;
-		border: 1px solid #a7f3d0;
-	}
-
-	.how-to h3 {
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: #059669;
-		margin-bottom: 0.25rem;
-	}
-
-	.how-to ul {
-		font-size: 0.75rem;
-		color: #4b5563;
-		padding-left: 1rem;
-		list-style: disc;
-	}
-
-	.grid-wrapper {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		align-items: center;
-	}
-
-	.grid-title {
-		font-weight: 600;
-		font-size: 1.2rem;
-		align-self: flex-start;
-		color: #111827;
-	}
-
-	.toolbar {
-		display: flex;
-		gap: 0.5rem;
-		align-self: flex-start;
-		margin-bottom: 0.5rem;
-	}
-
-	.btn {
-		border-radius: 0.75rem;
-		padding: 0.4rem 0.9rem;
-		font-size: 0.85rem;
-		border: none;
-		cursor: pointer;
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-	}
-
-	.btn.secondary {
-		background: #e5e7eb;
-		color: #111827;
-	}
-
-	.btn.secondary:hover:enabled {
-		background: #d1d5db;
-	}
-
-	.btn.secondary:disabled {
-		opacity: 0.4;
-		cursor: default;
-	}
-
-	.btn.active {
-		background: #fecaca;
-		color: #991b1b;
-	}
-
-	.design-area {
-		position: relative;
-		width: 1000px;
-		height: 520px;
-		max-width: 100%;
-		overflow: hidden;
-
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-
-		border-radius: 1.1rem;
-		border: 2px solid rgba(34, 197, 94, 0.6);
-		padding: 6px;
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.85),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.25);
-		background-color: transparent;
-	}
-
-	.grid {
-		width: 100%;
-		height: 100%;
-		display: grid;
-		grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
-		grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
-		gap: 2px;
-		background: transparent;
-		position: relative;
-	}
-
-	.grid-cell {
-		background: rgba(249, 250, 251, 0.35);
-		border-radius: 0.35rem;
-		border: 1px solid rgba(34, 197, 94, 0.45);
-	}
-
-	.placed-asset {
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		border-radius: 0.35rem;
-		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25);
-		transition: transform 0.15s ease;
-	}
-
-	.hint {
-		font-size: 0.8rem;
-		color: #6b7280;
-		margin-top: 0.75rem;
-		align-self: flex-start;
-	}
-
-	@media (max-width: 900px) {
-		.designer-page {
-			grid-template-columns: 1fr;
-			padding: 1.25rem 1rem;
 		}
 	}
 </style>

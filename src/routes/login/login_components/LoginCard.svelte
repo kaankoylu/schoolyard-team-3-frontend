@@ -5,6 +5,8 @@
   import { api } from "$lib/api";
   import { goto } from "$app/navigation";
 
+  const API_BASE = "http://localhost";
+
   let email = "";
   let password = "";
   let name = "";
@@ -35,20 +37,55 @@
     }
   }
 
-  // STUDENT LOGIN
+  // ✅ STUDENT LOGIN (name + class code)
   async function handleStudentLogin(event: Event) {
     event.preventDefault();
     error = "";
 
+    const studentName = name.trim();
+    const classCode = code.trim().toUpperCase();
+
+    if (!studentName || !classCode) {
+      error = "Name and code are required";
+      return;
+    }
+
     try {
-      await api.post("/api/login", {
-        email: name,
-        password: code
+      const res = await fetch(`${API_BASE}/api/student-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ code: classCode, student_name: studentName })
       });
 
+      if (res.status === 422) {
+        const data = await res.json().catch(() => null);
+        error = data?.message ?? "Invalid or expired code";
+        return;
+      }
+
+      if (!res.ok) {
+        const t = await res.text();
+        console.error(t);
+        error = "Student login failed";
+        return;
+      }
+
+      const data = await res.json(); // { class_id, student_name }
+
+      localStorage.setItem(
+        "student_session",
+        JSON.stringify({
+          class_id: data.class_id,
+          student_name: data.student_name,
+          code: classCode,
+          created_at: Date.now()
+        })
+      );
+
       goto("/dashboard/student");
-    } catch (err: any) {
-      error = extractErrorMessage(err, "Login failed");
+    } catch (e) {
+      console.error(e);
+      error = "Student login failed";
     }
   }
 
@@ -82,7 +119,7 @@
     active ? "border-4" : "border border-gray-200"
   }`}
   style={active ? "border-color: #DAB2FF;" : ""}>
-  
+
   {#if mode === "teacher"}
     <h2 class="text-xl font-semibold">Teacher Login</h2>
     <p class="text-gray-500 text-sm mb-6">Log in met jouw eigen account</p>
@@ -110,9 +147,7 @@
         />
       </div>
 
-      <button
-        type="submit"
-        class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
+      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
         Log in als docent
       </button>
     </form>
@@ -138,7 +173,7 @@
       <div>
         <label class="font-medium text-xl text-black">🔑 Code</label>
         <input
-          type="password"
+          type="text"
           placeholder="ABC123"
           class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
           bind:value={code}
@@ -180,9 +215,7 @@
         />
       </div>
 
-      <button
-        type="submit"
-        class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
+      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
         Log in als administrator
       </button>
     </form>
@@ -236,9 +269,7 @@
         />
       </div>
 
-      <button
-        type="submit"
-        class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
+      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
         Account aanmaken
       </button>
     </form>
