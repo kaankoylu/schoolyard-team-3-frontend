@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { showAlert } from '$lib/utils/alert';
 
 	const API_BASE = 'http://localhost';
 
@@ -166,7 +167,7 @@
 				return;
 			}
 
-			alert('Feedback opgeslagen 👍');
+			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
 
 			// keep local copy in sync
 			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
