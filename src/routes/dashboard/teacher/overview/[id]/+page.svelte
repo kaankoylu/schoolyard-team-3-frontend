@@ -53,6 +53,7 @@
 
 		feedback?: string | null;
 		[key: string]: any;
+		grade?: number | null;
 	};
 
 	let design: Design | null = null;
@@ -66,6 +67,9 @@
 
 	// controls how “strong” the grid lines are
 	let softGrid = false;
+
+	let grade: number | null = null;
+	let savingGrade = false;
 
 	onMount(async () => {
 		const idFromRoute = Number(get(page).params.id);
@@ -90,11 +94,13 @@
 				...data,
 				backgroundImage: data.backgroundImage ?? data.background_image ?? null,
 				placedAssets: (data.placedAssets ?? data.placed_assets ?? []) as PlacedAsset[],
-				feedback: data.feedback ?? null
+				feedback: data.feedback ?? null,
+				grade: data.grade ?? null
 			};
 
 			design = normalized;
 			feedbackText = normalized.feedback ?? '';
+			grade = normalized.grade ?? null;
 		} catch (e: any) {
 			console.error(e);
 			error = e?.message ?? 'Could not load this design.';
@@ -104,7 +110,9 @@
 	});
 
 	function getClassName(d: Design) {
-		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—');
+		return (
+			d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—')
+		);
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
@@ -132,11 +140,7 @@
 
 	function getPlacedImageUrl(item: PlacedAsset) {
 		// Best-case: you stored image_url in placedAssets when saving
-		const url =
-			item.image_url ??
-			item.asset?.image_url ??
-			item.asset?.image ??
-			null;
+		const url = item.image_url ?? item.asset?.image_url ?? item.asset?.image ?? null;
 
 		if (!url) return '/placeholder.png';
 
@@ -184,6 +188,40 @@
 	function shortDate(date?: string) {
 		if (!date) return '';
 		return new Date(date).toLocaleString();
+	}
+
+	function setGrade(value: number) {
+		grade = value;
+	}
+
+	async function saveGrade() {
+		if (grade === null) return;
+
+		savingGrade = true;
+
+		try {
+			const res = await fetch(`${API_BASE}/api/designs/${designId}/grade`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({ grade })
+			});
+
+			if (!res.ok) {
+				alert('Saving grade failed');
+				return;
+			}
+
+			if (design) {
+				design = { ...design, grade };
+			}
+
+			alert('Grade saved ⭐');
+		} finally {
+			savingGrade = false;
+		}
 	}
 </script>
 
@@ -276,7 +314,6 @@
 								<p><span class="metaKey">Grid</span> {design.rows} × {design.cols}</p>
 							{/if}
 
-							<!-- ✅ Class name instead of code -->
 							<p><span class="metaKey">Class</span> {getClassName(design)}</p>
 
 							{#if design.student_name}
@@ -309,6 +346,31 @@
 						</p>
 					</div>
 
+					<div class="gradeBlock">
+						<div class="gradeTitle">Student grade</div>
+
+						<div class="stars">
+							{#each [1, 2, 3, 4, 5] as star}
+								<button
+									type="button"
+									class="star {grade !== null && grade >= star ? 'active' : ''}"
+									on:click={() => setGrade(star)}
+									aria-label={`Set grade to ${star}`}
+								>
+									★
+								</button>
+							{/each}
+						</div>
+
+						<button
+							class="btnPrimary"
+							on:click={saveGrade}
+							disabled={savingGrade || grade === null}
+						>
+							{savingGrade ? 'Saving…' : 'Save grade'}
+						</button>
+					</div>
+
 					<textarea
 						class="textarea"
 						rows="10"
@@ -326,14 +388,18 @@
 </div>
 
 <style>
-	/* your original CSS unchanged */
 	.page {
 		min-height: 100vh;
 		padding: 28px 16px 44px;
 		background:
 			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
 			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+			linear-gradient(
+				180deg,
+				rgba(241, 245, 249, 0.65) 0%,
+				rgba(248, 250, 252, 1) 55%,
+				rgba(241, 245, 249, 0.7) 100%
+			);
 	}
 
 	.container {
@@ -366,7 +432,9 @@
 		background: rgba(255, 255, 255, 0.6);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease;
 	}
 	.backlink:hover {
 		background: rgba(255, 255, 255, 0.9);
@@ -453,7 +521,10 @@
 		font-size: 12px;
 		font-weight: 900;
 		cursor: pointer;
-		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease,
+			box-shadow 160ms ease;
 	}
 	.toggleBtn:hover {
 		background: rgba(16, 185, 129, 0.14);
@@ -613,7 +684,9 @@
 		font-size: 12px;
 		line-height: 1.4;
 		background: rgba(255, 255, 255, 0.92);
-		transition: border-color 140ms ease, box-shadow 140ms ease;
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease;
 	}
 	.textarea:focus {
 		outline: none;
@@ -633,7 +706,10 @@
 		font-size: 12px;
 		font-weight: 900;
 		cursor: pointer;
-		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
+		transition:
+			transform 120ms ease,
+			filter 160ms ease,
+			box-shadow 160ms ease;
 		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
 	}
 	.btnPrimary:hover {
@@ -703,5 +779,35 @@
 		.side {
 			position: static;
 		}
+	}
+
+	.gradeBlock {
+		display: grid;
+		gap: 8px;
+		margin-bottom: 12px;
+	}
+
+	.gradeTitle {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.72);
+	}
+
+	.stars {
+		display: flex;
+		gap: 6px;
+	}
+
+	.star {
+		font-size: 22px;
+		background: none;
+		border: none;
+		cursor: pointer;
+		color: rgba(15, 23, 42, 0.25);
+		padding: 0;
+	}
+
+	.star.active {
+		color: #facc15;
 	}
 </style>
