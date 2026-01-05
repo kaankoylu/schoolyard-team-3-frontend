@@ -74,7 +74,7 @@
 		classesLoading = true;
 		try {
 			const res = await fetch(`${API_BASE}/api/classes`);
-			if (!res.ok) throw new Error(`Failed to load classes (${res.status})`);
+			if (!res.ok) throw new Error(`Kan klassen niet laden (${res.status})`);
 			const data = await res.json();
 			classes = Array.isArray(data) ? data : [];
 		} catch (e: any) {
@@ -92,7 +92,7 @@
 
 		try {
 			const res = await fetch(`${API_BASE}/api/designs`);
-			if (!res.ok) throw new Error(`Failed to load designs (${res.status})`);
+			if (!res.ok) throw new Error(`Kan ontwerpen niet laden (${res.status})`);
 
 			const data = await res.json();
 			const raw = Array.isArray(data) ? data : data.data ?? [];
@@ -112,7 +112,7 @@
 			}, {});
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Could not load designs.';
+			error = e?.message ?? 'Kan ontwerpen niet laden';
 		} finally {
 			loading = false;
 		}
@@ -122,7 +122,7 @@
 		return (
 			design.schoolClass?.name ??
 			design.school_class?.name ??
-			(design.class_id ? `Class #${design.class_id}` : '—')
+			(design.class_id ? `Klas #${design.class_id}` : '—')
 		);
 	}
 
@@ -188,29 +188,29 @@
 	<div class="container">
 		<header class="topbar">
 			<div class="topbarLeft">
-				<h1 class="title">Student designs</h1>
-				<p class="subtitle">Overview of all saved layouts. Leave quick, kid-friendly feedback.</p>
+				<h1 class="title">Studenten ontwerpen</h1>
+				<p class="subtitle">Overzicht van alle opgeslagen ontwerpen, laat snelle kind vriendelijke feedback achter.</p>
 
 				<!-- ✅ FILTER BAR -->
 				<div class="filters">
-					<label class="filterLabel" for="classFilter">Filter class</label>
+					<label class="filterLabel" for="classFilter">Filter door klassen</label>
 					<select
 						id="classFilter"
 						class="select"
 						bind:value={selectedClassId}
 						disabled={classesLoading || classes.length === 0}
 					>
-						<option value="all">All classes</option>
+						<option value="all">Alle klassen</option>
 						{#each classes as cls}
 							<option value={cls.id}>{cls.name}</option>
 						{/each}
 					</select>
 
-					<span class="countPill">{filteredDesigns.length} shown</span>
+					<span class="countPill">{filteredDesigns.length} Laat zien</span>
 				</div>
 			</div>
 
-			<a href="/dashboard/teacher" class="backlink">← Back to teacher dashboard</a>
+			<a href="/dashboard/teacher" class="backlink">← Terug naar docenten dashboard</a>
 		</header>
 
 		{#if loading}
@@ -223,12 +223,12 @@
 			<div class="state error">{error}</div>
 		{:else if filteredDesigns.length === 0}
 			<div class="state empty">
-				<div class="emptyTitle">No designs yet</div>
+				<div class="emptyTitle">Er zijn nog geen ontwerpen</div>
 				<div class="emptyText">
 					{#if selectedClassId === 'all'}
-						Ask students to save their design first. It will show up here automatically.
+						Vraag de studenten om hun ontwerpen op te slaan, vervolgens kun jij ze automatisch hier bekijken.
 					{:else}
-						No designs found for this class yet.
+						Er zijn nog geen ontwerpen voor deze klas. 
 					{/if}
 				</div>
 			</div>
@@ -280,7 +280,7 @@
 
 						<div class="content">
 							<div class="row">
-								<h2 class="cardTitle">Design #{design.id}</h2>
+								<h2 class="cardTitle">Ontwerp #{design.id}</h2>
 								{#if design.created_at}
 									<span class="date">{shortDate(design.created_at)}</span>
 								{/if}
@@ -293,7 +293,7 @@
 								{/if}
 
 								<!-- ✅ show class NAME -->
-								<div><span class="metaKey">Class</span> {getClassName(design)}</div>
+								<div><span class="metaKey">Klas</span> {getClassName(design)}</div>
 
 								{#if design.student_name}
 									<div><span class="metaKey">Student</span> {design.student_name}</div>
@@ -314,14 +314,14 @@
 
 							<!-- feedback -->
 							<div class="feedback">
-								<label class="label">Teacher feedback</label>
+								<label class="label">Feedback van docent</label>
 								<textarea
 									class="textarea"
 									rows="3"
 									bind:value={feedbackByDesign[design.id]}
 									placeholder="Write short, kid-friendly feedback…"
 								></textarea>
-								<div class="hint">Keep it short: 1–2 sentences is enough.</div>
+								<div class="hint">Hou het kort, 1 a 2 zinnen is genoeg.</div>
 							</div>
 
 							<div class="actions">
@@ -334,7 +334,7 @@
 								</button>
 
 								<a href={`/dashboard/teacher/overview/${design.id}`} class="link">
-									Open design →
+									Open ontwerp →
 								</a>
 							</div>
 						</div>

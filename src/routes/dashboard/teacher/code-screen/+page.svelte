@@ -80,7 +80,7 @@
     <div class="card">
       <h1 class="title">Geen code data gevonden</h1>
       <p class="muted">
-        Open dit scherm via “Genereer code” (teacher dashboard).
+        Open dit scherm via “Genereer code” (Docenten dashboard).
       </p>
       <a class="btn secondary" href="/dashboard/teacher">← Terug</a>
     </div>

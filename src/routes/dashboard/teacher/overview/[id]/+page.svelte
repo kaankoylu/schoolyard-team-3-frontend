@@ -72,7 +72,7 @@
 		designId = idFromRoute;
 
 		if (!designId || Number.isNaN(designId)) {
-			error = 'Invalid design ID in URL.';
+			error = 'Ongeldige ontwerp ID in URL';
 			loading = false;
 			return;
 		}
@@ -81,7 +81,7 @@
 			const res = await fetch(`${API_BASE}/api/designs/${designId}`);
 
 			if (!res.ok) {
-				throw new Error(`Failed to load design (${res.status})`);
+				throw new Error(`Er is iets fout gegaan met het laden van het gekozen ontwerp(${res.status})`);
 			}
 
 			const data = await res.json();
@@ -97,14 +97,14 @@
 			feedbackText = normalized.feedback ?? '';
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Could not load this design.';
+			error = e?.message ?? 'Kan het gekozen ontwerp niet laden.';
 		} finally {
 			loading = false;
 		}
 	});
 
 	function getClassName(d: Design) {
-		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—');
+		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Klas #${d.class_id}` : '—');
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
@@ -191,12 +191,12 @@
 	<div class="container">
 		<header class="topbar">
 			<div class="topbarLeft">
-				<a href="/dashboard/teacher/overview" class="backlink">← Back to designs overview</a>
+				<a href="/dashboard/teacher/overview" class="backlink">← Terug naar ontwerpen overzicht</a>
 
-				<h1 class="title">Student design #{designId}</h1>
+				<h1 class="title">Student ontwerp #{designId}</h1>
 
 				{#if design && design.created_at}
-					<p class="subtitle">Saved at {shortDate(design.created_at)}</p>
+					<p class="subtitle">Opgeslagen op {shortDate(design.created_at)}</p>
 				{/if}
 			</div>
 		</header>
@@ -211,16 +211,16 @@
 			<div class="state error">{error}</div>
 		{:else if !design}
 			<div class="state empty">
-				<div class="emptyTitle">Design not found</div>
-				<div class="emptyText">The design may have been deleted, or the link is wrong.</div>
+				<div class="emptyTitle">Ontwerp niet gevonden</div>
+				<div class="emptyText">Het ontwerp is verwijderd of de link klopt niet.</div>
 			</div>
 		{:else}
 			<div class="layout">
 				<section class="card">
 					<div class="cardHeader">
 						<div class="cardHeaderLeft">
-							<h2 class="cardTitle">Layout preview</h2>
-							<p class="cardHint">Read-only preview of the student’s saved design.</p>
+							<h2 class="cardTitle">Layout overzicht</h2>
+							<p class="cardHint">Alleen lezen voorbeeldweergave van het door de student opgeslagen ontwerp.</p>
 						</div>
 
 						<button type="button" class="toggleBtn" on:click={() => (softGrid = !softGrid)}>
@@ -271,13 +271,13 @@
 					<div class="metaGrid">
 						<div class="metaBlock">
 							<div class="metaTitle">Details</div>
-							<p><span class="metaKey">Design ID</span> {design.id}</p>
+							<p><span class="metaKey">Ontwerp ID</span> {design.id}</p>
 							{#if design.rows && design.cols}
 								<p><span class="metaKey">Grid</span> {design.rows} × {design.cols}</p>
 							{/if}
 
 							<!-- ✅ Class name instead of code -->
-							<p><span class="metaKey">Class</span> {getClassName(design)}</p>
+							<p><span class="metaKey">Klass</span> {getClassName(design)}</p>
 
 							{#if design.student_name}
 								<p><span class="metaKey">Student</span> {design.student_name}</p>
@@ -285,7 +285,7 @@
 						</div>
 
 						<div class="metaBlock">
-							<div class="metaTitle">Asset overview</div>
+							<div class="metaTitle">Asset overzicht</div>
 							{#if design.placedAssets && design.placedAssets.length > 0}
 								<p><span class="metaKey">Total items</span> {design.placedAssets.length}</p>
 								<div class="chips">
@@ -294,7 +294,7 @@
 									{/each}
 								</div>
 							{:else}
-								<p class="muted">No placed items stored in this design.</p>
+								<p class="muted">De geplaatste items zijn niet opgeslagen in dit ontwerp.</p>
 							{/if}
 						</div>
 					</div>
@@ -302,10 +302,10 @@
 
 				<aside class="side">
 					<div class="sideHeader">
-						<h2 class="sideTitle">Teacher feedback</h2>
+						<h2 class="sideTitle">Docent feedback</h2>
 						<p class="sideHint">
-							Short and concrete works best. Example:
-							<em>“Nice use of trees in the corners, maybe add benches near the field.”</em>
+							Kort maar krachtig werkt het beste, bijvoorbeeld:
+							<em>Leuk gebruik gemaakt van de bomen in de hoeken, misschien leuk om nog wat bankjes toe te voegen naast het veld”</em>
 						</p>
 					</div>
 
@@ -313,11 +313,11 @@
 						class="textarea"
 						rows="10"
 						bind:value={feedbackText}
-						placeholder="Write your feedback here…"
+						placeholder="Zet jouw feedback"
 					></textarea>
 
 					<button class="btnPrimary" on:click={saveFeedback} disabled={savingFeedback}>
-						{savingFeedback ? 'Saving…' : 'Save feedback'}
+						{savingFeedback ? 'Saving…' : 'Feedback opgeslagen'}
 					</button>
 				</aside>
 			</div>
