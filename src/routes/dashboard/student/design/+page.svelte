@@ -394,7 +394,9 @@
 		<div class="grid-header">
 			<div>
 				<h2 class="grid-title">Jouw ontwerp</h2>
-				<p class="grid-subtitle">Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.</p>
+				<p class="grid-subtitle">
+					Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.
+				</p>
 			</div>
 		</div>
 
@@ -403,7 +405,9 @@
 				<div class="tutorial-card mascot-card">
 					<div class="tutorial-header">
 						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>✕</button>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}
+							>✕</button
+						>
 					</div>
 
 					<div class="mascot-layout">
@@ -420,10 +424,15 @@
 							<div class="bubble-controls">
 								<button class="btn secondary" type="button" on:click={prevBubble}>← Vorige</button>
 								<span class="bubble-counter">{currentBubble + 1} / {mascotBubbles.length}</span>
-								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button>
+								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button
+								>
 							</div>
 
-							<button type="button" class="btn primary mascot-start-btn" on:click={() => (showTutorial = false)}>
+							<button
+								type="button"
+								class="btn primary mascot-start-btn"
+								on:click={() => (showTutorial = false)}
+							>
 								Ik snap het, laten we ontwerpen! 🎨
 							</button>
 						</div>
@@ -435,54 +444,94 @@
 		<!-- control buttons -->
 		<div class="toolbar">
 			<div class="toolbar-left">
-				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Uitleg</button>
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}
+					>❓ Uitleg</button
+				>
 
-				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
+				<button
+					type="button"
+					class="btn secondary"
+					on:click={toggleDeleteMode}
+					class:active={deleteMode}
+				>
 					{deleteMode ? '❌ Uit delete modes gaan' : '🗑 Delete mode'}
 				</button>
 
-				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
+				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}
+					>↩️ Undo</button
+				>
 				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Opnieuw doen</button>
 			</div>
 
 			<div class="toolbar-right">
-				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
+				<button class="btn secondary" type="button" on:click={saveDesignToConsole}
+					>💾 Console</button
+				>
 				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Opslaan</button>
 			</div>
 		</div>
 
-		<div class="design-area" style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}>
-			<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
-				{#each Array.from({ length: rows * cols }) as _}
-					<div class="grid-cell"></div>
-				{/each}
+		<div
+			class="design-area"
+			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
+		>
+			<div class="grid-with-scale">
+				<!-- ===== BOVENSTE SCHAAL (meters) ===== -->
+				<div class="scale-top">
+					<div class="scale-corner"></div>
+					{#each Array.from({ length: cols }) as _, i}
+						<div class="scale-label">{i + 1} m</div>
+					{/each}
+				</div>
 
-				{#each placedAssets as placed (placed.instanceId)}
+				<!-- ===== LINKER SCHAAL + GRID ===== -->
+				<div class="scale-body">
+					<div class="scale-left">
+						{#each Array.from({ length: rows }) as _, i}
+							<div class="scale-label">{i + 1} m</div>
+						{/each}
+					</div>
+
 					<div
-						class="placed-asset"
-						draggable="true"
-						on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
-						on:dragend={handleDragEnd}
-						style={`grid-column: ${placed.col + 1} / span ${
-							getRotatedSize(placed.asset, placed.rotation).width
-						}; grid-row: ${placed.row + 1} / span ${
-							getRotatedSize(placed.asset, placed.rotation).height
-						}; background-image: url('${ASSET_BASE}${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
-						title={placed.asset.label}
-						on:click={() => handleAssetClick(placed.instanceId)}
-						on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
-					></div>
-				{/each}
+						class="grid"
+						bind:this={gridEl}
+						on:dragover={handleDragOver}
+						on:drop={handleGridDrop}
+					>
+						{#each Array.from({ length: rows * cols }) as _}
+							<div class="grid-cell"></div>
+						{/each}
+
+						{#each placedAssets as placed (placed.instanceId)}
+							<div
+								class="placed-asset"
+								draggable="true"
+								on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
+								on:dragend={handleDragEnd}
+								style={`grid-column: ${placed.col + 1} / span ${
+									getRotatedSize(placed.asset, placed.rotation).width
+								}; grid-row: ${placed.row + 1} / span ${
+									getRotatedSize(placed.asset, placed.rotation).height
+								}; background-image: url('${ASSET_BASE}${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
+								title={placed.asset.label}
+								on:click={() => handleAssetClick(placed.instanceId)}
+								on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
+							></div>
+						{/each}
+					</div>
+				</div>
 			</div>
 
 			{#if deleteMode}
-				<div class="delete-banner">Delete mode is aan — klik op een object om het te verwijderen.</div>
+				<div class="delete-banner">
+					Delete mode is aan — klik op een object om het te verwijderen.
+				</div>
 			{/if}
 		</div>
 
 		<p class="hint">
 			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik is een object verwijderen 
+			Delete-modus + klik is een object verwijderen
 		</p>
 	</main>
 </div>
@@ -562,7 +611,10 @@
 		background: rgba(255, 255, 255, 0.95);
 		border: 1px solid rgba(229, 231, 235, 0.95);
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-		transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+		transition:
+			transform 0.12s ease,
+			box-shadow 0.12s ease,
+			border-color 0.12s ease;
 	}
 
 	.asset:hover {
@@ -713,8 +765,12 @@
 		align-items: center;
 		gap: 0.35rem;
 		font-weight: 800;
-		transition: transform 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease,
-			border-color 0.12s ease, opacity 0.12s ease;
+		transition:
+			transform 0.12s ease,
+			background-color 0.12s ease,
+			box-shadow 0.12s ease,
+			border-color 0.12s ease,
+			opacity 0.12s ease;
 		user-select: none;
 	}
 
@@ -800,7 +856,9 @@
 		background-repeat: no-repeat;
 		border-radius: 0.35rem;
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
-		transition: transform 0.15s ease, box-shadow 0.15s ease;
+		transition:
+			transform 0.15s ease,
+			box-shadow 0.15s ease;
 		border: 1px solid rgba(255, 255, 255, 0.18);
 	}
 
@@ -987,6 +1045,43 @@
 
 		.mascot-col {
 			order: -1;
+		}
+
+		.grid-with-scale {
+			display: flex;
+			flex-direction: column;
+			height: 100%;
+		}
+
+		.scale-top {
+			display: grid;
+			grid-template-columns: 40px repeat(var(--cols), 1fr);
+			margin-bottom: 4px;
+		}
+
+		.scale-body {
+			display: grid;
+			grid-template-columns: 40px 1fr;
+			height: 100%;
+		}
+
+		.scale-left {
+			display: grid;
+			grid-template-rows: repeat(var(--rows), 1fr);
+		}
+
+		.scale-corner {
+			width: 40px;
+		}
+
+		.scale-label {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 0.7rem;
+			font-weight: 800;
+			color: #065f46;
+			user-select: none;
 		}
 	}
 </style>
