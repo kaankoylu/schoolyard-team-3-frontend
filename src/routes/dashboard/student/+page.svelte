@@ -18,7 +18,7 @@
             <a href="/dashboard/student/design" aria-label="Start Designing" class="relative block w-60 h-40 md:w-90 md:h-56 rounded-4xl overflow-hidden shadow-lg focus:outline-none focus:ring-4 focus:ring-sky-300 group transform transition hover:scale-105 active:scale-95">
                 <DesigningIcon />
                 <div class="absolute bottom-2 w-full text-center">
-                    <span class="text-white text-md md:text-base font-semibold drop-shadow-md">Start Designing</span>
+                    <span class="text-white text-md md:text-base font-semibold drop-shadow-md">Start met ontwerpen</span>
                 </div>
 
             </a>
@@ -26,17 +26,17 @@
     </div>
     <div class="w-full grid grid-cols-2 gird-columns-2 p-6 gap-6">
         <DashboardNavigationCard 
-        description="Give Feedback on other students Design" 
-        title="Give Feedback" 
-        buttonName="give Feedback" 
+        description="Geef feedback op een andere student zijn ontwerp" 
+        title="Feedback geven" 
+        buttonName="Feedback geven" 
         href="fcgv"
         imagePath="/dashboard/like.png"
         style="kids"
         />
         <DashboardNavigationCard 
-        description="Read about what you could have in your schoolyard" 
+        description="Lees wat jouw nieuwe speeltuin  kan hebben" 
         title="Wiki" 
-        buttonName="read the Wiki" 
+        buttonName="lees de Wiki" 
         href="fcgv"
         imagePath="/dashboard/OpenBook.png"
         style="kids"

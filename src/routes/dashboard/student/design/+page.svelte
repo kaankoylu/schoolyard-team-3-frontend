@@ -23,7 +23,7 @@
 	onMount(async () => {
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
+			if (!res.ok) throw new Error(`kan assets niet laden (${res.status})`);
 
 			const data = await res.json();
 			const allAssets = Array.isArray(data) ? data : [];
@@ -343,12 +343,12 @@
 	<!-- SIDEBAR: assets -->
 	<aside class="sidebar">
 		<div class="sidebar-top">
-			<h2 class="sidebar-title">Your Toolbox</h2>
+			<h2 class="sidebar-title">Jouw Toolbox</h2>
 			<p class="sidebar-subtitle">Sleep items naar het rooster. Dubbelklik om te draaien.</p>
 		</div>
 
 		{#if assetsLoading}
-			<p class="px-2 text-xs text-slate-500">Assets worden geladen…</p>
+			<p class="px-2 text-xs text-slate-500">Plaatjes worden geladen…</p>
 		{:else if assetsError}
 			<p class="px-2 text-xs text-red-600">{assetsError}</p>
 		{:else}
@@ -378,7 +378,7 @@
 		{/if}
 
 		<div class="how-to">
-			<h3>How to play</h3>
+			<h3>Hoe te gebruiken?</h3>
 			<ul>
 				<li>💡 Sleep een object naar het rooster</li>
 				<li>🎯 Laat los om het te plaatsen</li>
@@ -435,19 +435,19 @@
 		<!-- control buttons -->
 		<div class="toolbar">
 			<div class="toolbar-left">
-				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Tutorial</button>
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Uitleg</button>
 
 				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
-					{deleteMode ? '❌ Exit delete mode' : '🗑 Delete mode'}
+					{deleteMode ? '❌ Uit delete modes gaan' : '🗑 Delete mode'}
 				</button>
 
 				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
-				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Reset</button>
+				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Opnieuw doen</button>
 			</div>
 
 			<div class="toolbar-right">
 				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
-				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Save</button>
+				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Opslaan</button>
 			</div>
 		</div>
 
@@ -482,7 +482,7 @@
 
 		<p class="hint">
 			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik verwijdert.  
+			Delete-modus + klik is een object verwijderen 
 		</p>
 	</main>
 </div>
