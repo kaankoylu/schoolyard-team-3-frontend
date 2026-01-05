@@ -33,31 +33,31 @@
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="Bekijk de studenten hun feedback op de assets en ontwerpen"" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
 		title="Student ontwerp" 
 		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="Bekijk de studenten hun feedback op de assets en ontwerpen"" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
 		title="Wiki" 
 		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="Bekijk de studenten hun feedback op de assets en ontwerpen"" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
 		title="Assets bewerken" 
 		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="Bekijk de studenten hun feedback op de assets en ontwerpen"" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
 		title="Layouts bewerken" 
 		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="Bekijk de studenten hun feedback op de assets en ontwerpen"" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
 		title="Klassen bewerken" 
 		buttonName="Naar Student feedback" 
 		href="fcgv"
