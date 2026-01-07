@@ -15,7 +15,6 @@
 		label?: string;
 		rotation?: number;
 
-		// optional if you still ever send nested asset (you usually don't)
 		asset?: {
 			label?: string;
 			width?: number;
@@ -24,7 +23,6 @@
 			image_url?: string;
 		};
 
-		// if you store these (recommended)
 		assetId?: number;
 		image_url?: string;
 
@@ -47,11 +45,12 @@
 		class_id?: number | null;
 		student_name?: string | null;
 
-		// relation from backend (snake/camel)
 		schoolClass?: { id?: number; name?: string } | null;
 		school_class?: { id?: number; name?: string } | null;
 
 		feedback?: string | null;
+		grade?: number | null;
+
 		[key: string]: any;
 	};
 
@@ -64,8 +63,10 @@
 
 	let designId: number;
 
-	// controls how “strong” the grid lines are
 	let softGrid = false;
+
+	let grade: number | null = null;
+	let savingGrade = false;
 
 	onMount(async () => {
 		const idFromRoute = Number(get(page).params.id);
@@ -81,7 +82,7 @@
 			const res = await fetch(`${API_BASE}/api/designs/${designId}`);
 
 			if (!res.ok) {
-				throw new Error(`Er is iets fout gegaan met het laden van het gekozen ontwerp(${res.status})`);
+				throw new Error(`Er is iets fout gegaan met het laden (${res.status})`);
 			}
 
 			const data = await res.json();
@@ -90,14 +91,16 @@
 				...data,
 				backgroundImage: data.backgroundImage ?? data.background_image ?? null,
 				placedAssets: (data.placedAssets ?? data.placed_assets ?? []) as PlacedAsset[],
-				feedback: data.feedback ?? null
+				feedback: data.feedback ?? null,
+				grade: data.grade ?? null
 			};
 
 			design = normalized;
 			feedbackText = normalized.feedback ?? '';
+			grade = normalized.grade ?? null;
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Kan het gekozen ontwerp niet laden.';
+			error = e?.message ?? 'Kan ontwerp niet laden.';
 		} finally {
 			loading = false;
 		}
@@ -109,12 +112,10 @@
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
 		const map = new Map<string, number>();
-
 		for (const item of items) {
 			const label = item.label ?? item.asset?.label ?? 'Unknown';
 			map.set(label, (map.get(label) ?? 0) + 1);
 		}
-
 		return Array.from(map.entries()).map(([label, count]) => ({ label, count }));
 	}
 
@@ -122,26 +123,15 @@
 		const rotation = (((item.rotation ?? 0) % 360) + 360) % 360;
 		const baseWidth = item.width ?? item.asset?.width ?? 1;
 		const baseHeight = item.height ?? item.asset?.height ?? 1;
-
-		if (rotation === 90 || rotation === 270) {
-			return { width: baseHeight, height: baseWidth };
-		}
-
-		return { width: baseWidth, height: baseHeight };
+		return rotation === 90 || rotation === 270
+			? { width: baseHeight, height: baseWidth }
+			: { width: baseWidth, height: baseHeight };
 	}
 
 	function getPlacedImageUrl(item: PlacedAsset) {
-		// Best-case: you stored image_url in placedAssets when saving
-		const url =
-			item.image_url ??
-			item.asset?.image_url ??
-			item.asset?.image ??
-			null;
-
+		const url = item.image_url ?? item.asset?.image_url ?? item.asset?.image ?? null;
 		if (!url) return '/placeholder.png';
-
-		// If backend returns "/storage/...." make it absolute
-		if (url.startsWith('http://') || url.startsWith('https://')) return url;
+		if (url.startsWith('http')) return url;
 		return `${ASSET_BASE}${url}`;
 	}
 
@@ -150,558 +140,93 @@
 		if (!text) return;
 
 		savingFeedback = true;
-
 		try {
 			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ text })
 			});
-
-			if (!res.ok) {
-				const body = await res.text();
-				console.error('Feedback error', res.status, body);
-				alert('Opslaan van feedback mislukt. Check de console.');
-				return;
-			}
-
-			alert('Feedback opgeslagen 👍');
-
-			if (design) {
-				design = { ...design, feedback: text };
-			}
-		} catch (err) {
-			console.error(err);
-			alert('Netwerkfout bij opslaan van feedback.');
+			if (!res.ok) throw new Error();
+			if (design) design = { ...design, feedback: text };
+			alert('Feedback opgeslagen');
+		} catch {
+			alert('Feedback opslaan mislukt');
 		} finally {
 			savingFeedback = false;
 		}
 	}
 
 	function shortDate(date?: string) {
-		if (!date) return '';
-		return new Date(date).toLocaleString();
+		return date ? new Date(date).toLocaleString() : '';
+	}
+
+	function setGrade(value: number) {
+		grade = value;
+	}
+
+	async function saveGrade() {
+		if (grade === null) return;
+		savingGrade = true;
+		try {
+			const res = await fetch(`${API_BASE}/api/designs/${designId}/grade`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ grade })
+			});
+			if (!res.ok) throw new Error();
+			if (design) design = { ...design, grade };
+			alert('Cijfer opgeslagen');
+		} catch {
+			alert('Cijfer opslaan mislukt');
+		} finally {
+			savingGrade = false;
+		}
 	}
 </script>
 
 <div class="page">
 	<div class="container">
-		<header class="topbar">
-			<div class="topbarLeft">
-				<a href="/dashboard/teacher/overview" class="backlink">← Terug naar ontwerpen overzicht</a>
-
-				<h1 class="title">Student ontwerp #{designId}</h1>
-
-				{#if design && design.created_at}
-					<p class="subtitle">Opgeslagen op {shortDate(design.created_at)}</p>
-				{/if}
-			</div>
-		</header>
+		<a href="/dashboard/teacher/overview" class="backlink">← Terug</a>
 
 		{#if loading}
-			<div class="state">
-				<div class="skeleton"></div>
-				<div class="skeleton"></div>
-				<div class="skeleton"></div>
-			</div>
+			<p>Laden…</p>
 		{:else if error}
-			<div class="state error">{error}</div>
-		{:else if !design}
-			<div class="state empty">
-				<div class="emptyTitle">Ontwerp niet gevonden</div>
-				<div class="emptyText">Het ontwerp is verwijderd of de link klopt niet.</div>
+			<p class="error">{error}</p>
+		{:else if design}
+			<h1>Student ontwerp #{design.id}</h1>
+			<p>{shortDate(design.created_at)}</p>
+
+			<p><strong>Klas:</strong> {getClassName(design)}</p>
+			{#if design.student_name}
+				<p><strong>Student:</strong> {design.student_name}</p>
+			{/if}
+
+			<h3>Assets</h3>
+			{#each groupAssetsByLabel(design.placedAssets ?? []) as group}
+				<span>{group.label} × {group.count}</span>
+			{/each}
+
+			<h3>Beoordeling</h3>
+			<div>
+				{#each [1,2,3,4,5] as star}
+					<button on:click={() => setGrade(star)} class:active={grade && grade >= star}>★</button>
+				{/each}
 			</div>
-		{:else}
-			<div class="layout">
-				<section class="card">
-					<div class="cardHeader">
-						<div class="cardHeaderLeft">
-							<h2 class="cardTitle">Layout overzicht</h2>
-							<p class="cardHint">Alleen lezen voorbeeldweergave van het door de student opgeslagen ontwerp.</p>
-						</div>
+			<button on:click={saveGrade} disabled={savingGrade || grade === null}>
+				Opslaan
+			</button>
 
-						<button type="button" class="toggleBtn" on:click={() => (softGrid = !softGrid)}>
-							{softGrid ? 'Grid: strong' : 'Grid: translucent'}
-						</button>
-					</div>
-
-					<!-- ✅ SAME SIZE AS ORIGINAL -->
-					<div class="previewFrame">
-						<div
-							class="previewBg"
-							style={`background-image: url('${
-								design.backgroundImage ??
-								'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg'
-							}')`}
-						></div>
-						<div class="previewOverlay" aria-hidden="true"></div>
-
-						{#if design.rows && design.cols}
-							<div
-								class="lockedGrid"
-								style={`grid-template-columns: repeat(${design.cols}, minmax(0, 1fr)); grid-template-rows: repeat(${design.rows}, minmax(0, 1fr)); gap: 2px;`}
-							>
-								{#each Array.from({ length: design.rows * design.cols }) as _, i}
-									<div class="cell" style={`opacity: ${softGrid ? 0.25 : 0.9};`} />
-								{/each}
-
-								{#if design.placedAssets && design.placedAssets.length > 0}
-									{#each design.placedAssets as item (item.instanceId ?? `${item.row}-${item.col}-${item.label}`)}
-										{@const size = getRotatedSize(item)}
-										<div
-											class="placed"
-											title={item.label ?? item.asset?.label}
-											style={`grid-column: ${(item.col ?? 0) + 1} / span ${
-												size.width
-											}; grid-row: ${(item.row ?? 0) + 1} / span ${size.height}; background-image: url('${getPlacedImageUrl(
-												item
-											)}'); background-size: cover; background-position: center; transform: rotate(${
-												item.rotation ?? 0
-											}deg);`}
-										/>
-									{/each}
-								{/if}
-							</div>
-						{/if}
-					</div>
-
-					<div class="metaGrid">
-						<div class="metaBlock">
-							<div class="metaTitle">Details</div>
-							<p><span class="metaKey">Ontwerp ID</span> {design.id}</p>
-							{#if design.rows && design.cols}
-								<p><span class="metaKey">Grid</span> {design.rows} × {design.cols}</p>
-							{/if}
-
-							<!-- ✅ Class name instead of code -->
-							<p><span class="metaKey">Klass</span> {getClassName(design)}</p>
-
-							{#if design.student_name}
-								<p><span class="metaKey">Student</span> {design.student_name}</p>
-							{/if}
-						</div>
-
-						<div class="metaBlock">
-							<div class="metaTitle">Asset overzicht</div>
-							{#if design.placedAssets && design.placedAssets.length > 0}
-								<p><span class="metaKey">Total items</span> {design.placedAssets.length}</p>
-								<div class="chips">
-									{#each groupAssetsByLabel(design.placedAssets) as group}
-										<span class="chip">{group.label} × {group.count}</span>
-									{/each}
-								</div>
-							{:else}
-								<p class="muted">De geplaatste items zijn niet opgeslagen in dit ontwerp.</p>
-							{/if}
-						</div>
-					</div>
-				</section>
-
-				<aside class="side">
-					<div class="sideHeader">
-						<h2 class="sideTitle">Docent feedback</h2>
-						<p class="sideHint">
-							Kort maar krachtig werkt het beste, bijvoorbeeld:
-							<em>Leuk gebruik gemaakt van de bomen in de hoeken, misschien leuk om nog wat bankjes toe te voegen naast het veld”</em>
-						</p>
-					</div>
-
-					<textarea
-						class="textarea"
-						rows="10"
-						bind:value={feedbackText}
-						placeholder="Zet jouw feedback"
-					></textarea>
-
-					<button class="btnPrimary" on:click={saveFeedback} disabled={savingFeedback}>
-						{savingFeedback ? 'Saving…' : 'Feedback opgeslagen'}
-					</button>
-				</aside>
-			</div>
+			<h3>Feedback</h3>
+			<textarea rows="6" bind:value={feedbackText}></textarea>
+			<button on:click={saveFeedback} disabled={savingFeedback}>
+				Feedback opslaan
+			</button>
 		{/if}
 	</div>
 </div>
 
 <style>
-	/* your original CSS unchanged */
-	.page {
-		min-height: 100vh;
-		padding: 28px 16px 44px;
-		background:
-			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
-			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
-	}
-
-	.container {
-		max-width: 1100px;
-		margin: 0 auto;
-		display: grid;
-		gap: 16px;
-	}
-
-	.topbar {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 12px;
-	}
-
-	.topbarLeft {
-		display: grid;
-		gap: 6px;
-	}
-
-	.backlink {
-		width: fit-content;
-		font-size: 13px;
-		color: rgba(15, 23, 42, 0.72);
-		text-decoration: none;
-		padding: 8px 10px;
-		border-radius: 10px;
-		border: 1px solid rgba(15, 23, 42, 0.1);
-		background: rgba(255, 255, 255, 0.6);
-		backdrop-filter: blur(10px);
-		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
-	}
-	.backlink:hover {
-		background: rgba(255, 255, 255, 0.9);
-		transform: translateY(-1px);
-	}
-	.backlink:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-	}
-
-	.title {
-		margin: 0;
-		font-size: 22px;
-		letter-spacing: -0.02em;
-		font-weight: 900;
-		color: #0f172a;
-	}
-
-	.subtitle {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.layout {
-		display: grid;
-		gap: 18px;
-		grid-template-columns: 1fr;
-	}
-
-	@media (min-width: 1024px) {
-		.layout {
-			grid-template-columns: 2fr 1fr;
-			align-items: start;
-		}
-	}
-
-	.card {
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		padding: 14px;
-		display: grid;
-		gap: 14px;
-	}
-
-	.cardHeader {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-
-	.cardHeaderLeft {
-		display: grid;
-		gap: 4px;
-	}
-
-	.cardTitle {
-		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
-		font-weight: 900;
-	}
-
-	.cardHint {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.toggleBtn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 8px 10px;
-		border-radius: 12px;
-		border: 1px solid rgba(16, 185, 129, 0.22);
-		background: rgba(16, 185, 129, 0.1);
-		color: rgba(4, 120, 87, 1);
-		font-size: 12px;
-		font-weight: 900;
-		cursor: pointer;
-		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
-	}
-	.toggleBtn:hover {
-		background: rgba(16, 185, 129, 0.14);
-		transform: translateY(-1px);
-	}
-	.toggleBtn:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-	}
-
-	.previewFrame {
-		position: relative;
-		height: 420px;
-		width: 100%;
-		overflow: hidden;
-		border-radius: 18px;
-		border: 1px solid rgba(16, 185, 129, 0.26);
-		background: rgba(15, 23, 42, 0.04);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-	}
-
-	.lockedGrid {
-		position: relative;
-		z-index: 1;
-		margin: 12px;
-		height: calc(100% - 24px);
-		width: calc(100% - 24px);
-		display: grid;
-	}
-
-	.previewBg {
-		position: absolute;
-		inset: 0;
-		background-size: cover;
-		background-position: center;
-		filter: saturate(1.02) contrast(1.02);
-	}
-
-	.previewOverlay {
-		position: absolute;
-		inset: 0;
-		background:
-			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.1) 100%),
-			radial-gradient(700px 300px at 20% 10%, rgba(59, 130, 246, 0.16), transparent 60%),
-			radial-gradient(700px 300px at 90% 10%, rgba(34, 197, 94, 0.12), transparent 55%);
-	}
-
-	.cell {
-		border-radius: 6px;
-		border: 1px solid rgba(16, 185, 129, 0.35);
-		background: rgba(16, 185, 129, 0.08);
-	}
-
-	.placed {
-		border-radius: 8px;
-		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-		border: 1px solid rgba(255, 255, 255, 0.25);
-		background-color: rgba(255, 255, 255, 0.2);
-	}
-
-	.metaGrid {
-		display: grid;
-		gap: 12px;
-		grid-template-columns: 1fr;
-	}
-
-	@media (min-width: 640px) {
-		.metaGrid {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-
-	.metaBlock {
-		border-radius: 16px;
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		background: rgba(248, 250, 252, 0.75);
-		padding: 12px;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.65);
-		display: grid;
-		gap: 6px;
-	}
-
-	.metaTitle {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.78);
-	}
-
-	.metaKey {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.7);
-		margin-right: 8px;
-	}
-
-	.muted {
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		margin-top: 4px;
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		border-radius: 999px;
-		padding: 4px 10px;
-		font-size: 11px;
-		font-weight: 900;
-		background: rgba(16, 185, 129, 0.1);
-		color: rgba(4, 120, 87, 1);
-		border: 1px solid rgba(16, 185, 129, 0.22);
-	}
-
-	.side {
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		padding: 14px;
-		display: grid;
-		gap: 10px;
-		position: sticky;
-		top: 16px;
-		align-self: start;
-	}
-
-	.sideHeader {
-		display: grid;
-		gap: 6px;
-	}
-
-	.sideTitle {
-		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
-		font-weight: 900;
-	}
-
-	.sideHint {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.textarea {
-		width: 100%;
-		resize: none;
-		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.14);
-		padding: 10px 10px;
-		font-size: 12px;
-		line-height: 1.4;
-		background: rgba(255, 255, 255, 0.92);
-		transition: border-color 140ms ease, box-shadow 140ms ease;
-	}
-	.textarea:focus {
-		outline: none;
-		border-color: rgba(16, 185, 129, 0.45);
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-	}
-
-	.btnPrimary {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 10px 12px;
-		border-radius: 14px;
-		border: 1px solid rgba(16, 185, 129, 0.45);
-		background: rgba(16, 185, 129, 0.95);
-		color: #fff;
-		font-size: 12px;
-		font-weight: 900;
-		cursor: pointer;
-		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
-		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
-	}
-	.btnPrimary:hover {
-		filter: brightness(1.02);
-		transform: translateY(-1px);
-	}
-	.btnPrimary:active {
-		transform: translateY(0px);
-	}
-	.btnPrimary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		box-shadow: none;
-	}
-
-	.state {
-		padding: 12px;
-		border-radius: 16px;
-		border: 1px dashed rgba(15, 23, 42, 0.18);
-		background: rgba(248, 250, 252, 0.85);
-		display: grid;
-		gap: 10px;
-	}
-	.state.error {
-		border-style: solid;
-		border-color: rgba(239, 68, 68, 0.22);
-		background: rgba(239, 68, 68, 0.06);
-		color: rgba(185, 28, 28, 1);
-		font-weight: 900;
-	}
-	.state.empty {
-		border-style: solid;
-		border-color: rgba(15, 23, 42, 0.1);
-	}
-
-	.emptyTitle {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.78);
-	}
-	.emptyText {
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.skeleton {
-		height: 12px;
-		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			rgba(15, 23, 42, 0.06),
-			rgba(15, 23, 42, 0.1),
-			rgba(15, 23, 42, 0.06)
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.1s infinite linear;
-	}
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	@media (max-width: 520px) {
-		.side {
-			position: static;
-		}
-	}
+	.backlink { display:inline-block; margin-bottom:12px; }
+	button.active { color:#facc15; }
+	.error { color:red; }
 </style>
