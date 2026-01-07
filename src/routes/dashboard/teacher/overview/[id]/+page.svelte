@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
+	import '$lib/styles/Review_design_style.css';
 
 	const API_BASE = 'http://localhost';
 	const ASSET_BASE = API_BASE;
@@ -67,6 +68,10 @@
 	// controls how “strong” the grid lines are
 	let softGrid = false;
 
+	//for grading feature
+	let grade: number | null = null;
+	let savingGrade = false;
+
 	onMount(async () => {
 		const idFromRoute = Number(get(page).params.id);
 		designId = idFromRoute;
@@ -95,6 +100,7 @@
 
 			design = normalized;
 			feedbackText = normalized.feedback ?? '';
+			grade = normalized.grade ?? null;
 		} catch (e: any) {
 			console.error(e);
 			error = e?.message ?? 'Could not load this design.';
@@ -104,7 +110,9 @@
 	});
 
 	function getClassName(d: Design) {
-		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—');
+		return (
+			d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Class #${d.class_id}` : '—')
+		);
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
@@ -132,11 +140,7 @@
 
 	function getPlacedImageUrl(item: PlacedAsset) {
 		// Best-case: you stored image_url in placedAssets when saving
-		const url =
-			item.image_url ??
-			item.asset?.image_url ??
-			item.asset?.image ??
-			null;
+		const url = item.image_url ?? item.asset?.image_url ?? item.asset?.image ?? null;
 
 		if (!url) return '/placeholder.png';
 
@@ -178,6 +182,33 @@
 			alert('Netwerkfout bij opslaan van feedback.');
 		} finally {
 			savingFeedback = false;
+		}
+	}
+
+	async function saveGrade(value: number) {
+		if (!design) return;
+
+		grade = value;
+		savingGrade = true;
+
+		try {
+			const res = await fetch(`${API_BASE}/api/designs/${designId}/grade`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({ grade: value })
+			});
+
+			if (!res.ok) {
+				throw new Error('Failed to save grade');
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Failed to save grade');
+		} finally {
+			savingGrade = false;
 		}
 	}
 
@@ -307,6 +338,9 @@
 							Short and concrete works best. Example:
 							<em>“Nice use of trees in the corners, maybe add benches near the field.”</em>
 						</p>
+
+						<h2 class="sideTitle">Grade</h2>
+						<p class="sideHint">Click to rate this design</p>
 					</div>
 
 					<textarea
@@ -319,389 +353,31 @@
 					<button class="btnPrimary" on:click={saveFeedback} disabled={savingFeedback}>
 						{savingFeedback ? 'Saving…' : 'Save feedback'}
 					</button>
+
+					<div class="starRow">
+						{#each [1, 2, 3, 4, 5] as star}
+							<button
+								type="button"
+								class="star {grade !== null && grade >= star ? 'active' : ''}"
+								on:click={() => (grade = star)}
+								disabled={savingGrade}
+							>
+								★
+							</button>
+						{/each}
+					</div>
+					{#if grade !== null}
+						<p class="gradeText">Grade: <strong>{grade} / 5</strong></p>
+					{/if}
+					<button
+						class="btnPrimary mt-2"
+						on:click={() => grade !== null && saveGrade(grade)}
+						disabled={savingGrade || grade === null}
+					>
+						{savingGrade ? 'Saving…' : 'Save grade'}
+					</button>
 				</aside>
 			</div>
 		{/if}
 	</div>
 </div>
-
-<style>
-	/* your original CSS unchanged */
-	.page {
-		min-height: 100vh;
-		padding: 28px 16px 44px;
-		background:
-			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
-			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
-	}
-
-	.container {
-		max-width: 1100px;
-		margin: 0 auto;
-		display: grid;
-		gap: 16px;
-	}
-
-	.topbar {
-		display: flex;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: 12px;
-	}
-
-	.topbarLeft {
-		display: grid;
-		gap: 6px;
-	}
-
-	.backlink {
-		width: fit-content;
-		font-size: 13px;
-		color: rgba(15, 23, 42, 0.72);
-		text-decoration: none;
-		padding: 8px 10px;
-		border-radius: 10px;
-		border: 1px solid rgba(15, 23, 42, 0.1);
-		background: rgba(255, 255, 255, 0.6);
-		backdrop-filter: blur(10px);
-		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
-	}
-	.backlink:hover {
-		background: rgba(255, 255, 255, 0.9);
-		transform: translateY(-1px);
-	}
-	.backlink:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
-	}
-
-	.title {
-		margin: 0;
-		font-size: 22px;
-		letter-spacing: -0.02em;
-		font-weight: 900;
-		color: #0f172a;
-	}
-
-	.subtitle {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.layout {
-		display: grid;
-		gap: 18px;
-		grid-template-columns: 1fr;
-	}
-
-	@media (min-width: 1024px) {
-		.layout {
-			grid-template-columns: 2fr 1fr;
-			align-items: start;
-		}
-	}
-
-	.card {
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		padding: 14px;
-		display: grid;
-		gap: 14px;
-	}
-
-	.cardHeader {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-	}
-
-	.cardHeaderLeft {
-		display: grid;
-		gap: 4px;
-	}
-
-	.cardTitle {
-		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
-		font-weight: 900;
-	}
-
-	.cardHint {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.toggleBtn {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 8px 10px;
-		border-radius: 12px;
-		border: 1px solid rgba(16, 185, 129, 0.22);
-		background: rgba(16, 185, 129, 0.1);
-		color: rgba(4, 120, 87, 1);
-		font-size: 12px;
-		font-weight: 900;
-		cursor: pointer;
-		transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
-	}
-	.toggleBtn:hover {
-		background: rgba(16, 185, 129, 0.14);
-		transform: translateY(-1px);
-	}
-	.toggleBtn:focus-visible {
-		outline: none;
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-	}
-
-	.previewFrame {
-		position: relative;
-		height: 420px;
-		width: 100%;
-		overflow: hidden;
-		border-radius: 18px;
-		border: 1px solid rgba(16, 185, 129, 0.26);
-		background: rgba(15, 23, 42, 0.04);
-		box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
-	}
-
-	.lockedGrid {
-		position: relative;
-		z-index: 1;
-		margin: 12px;
-		height: calc(100% - 24px);
-		width: calc(100% - 24px);
-		display: grid;
-	}
-
-	.previewBg {
-		position: absolute;
-		inset: 0;
-		background-size: cover;
-		background-position: center;
-		filter: saturate(1.02) contrast(1.02);
-	}
-
-	.previewOverlay {
-		position: absolute;
-		inset: 0;
-		background:
-			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.1) 100%),
-			radial-gradient(700px 300px at 20% 10%, rgba(59, 130, 246, 0.16), transparent 60%),
-			radial-gradient(700px 300px at 90% 10%, rgba(34, 197, 94, 0.12), transparent 55%);
-	}
-
-	.cell {
-		border-radius: 6px;
-		border: 1px solid rgba(16, 185, 129, 0.35);
-		background: rgba(16, 185, 129, 0.08);
-	}
-
-	.placed {
-		border-radius: 8px;
-		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-		border: 1px solid rgba(255, 255, 255, 0.25);
-		background-color: rgba(255, 255, 255, 0.2);
-	}
-
-	.metaGrid {
-		display: grid;
-		gap: 12px;
-		grid-template-columns: 1fr;
-	}
-
-	@media (min-width: 640px) {
-		.metaGrid {
-			grid-template-columns: 1fr 1fr;
-		}
-	}
-
-	.metaBlock {
-		border-radius: 16px;
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		background: rgba(248, 250, 252, 0.75);
-		padding: 12px;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.65);
-		display: grid;
-		gap: 6px;
-	}
-
-	.metaTitle {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.78);
-	}
-
-	.metaKey {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.7);
-		margin-right: 8px;
-	}
-
-	.muted {
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.chips {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		margin-top: 4px;
-	}
-
-	.chip {
-		display: inline-flex;
-		align-items: center;
-		border-radius: 999px;
-		padding: 4px 10px;
-		font-size: 11px;
-		font-weight: 900;
-		background: rgba(16, 185, 129, 0.1);
-		color: rgba(4, 120, 87, 1);
-		border: 1px solid rgba(16, 185, 129, 0.22);
-	}
-
-	.side {
-		border-radius: 18px;
-		background: rgba(255, 255, 255, 0.92);
-		border: 1px solid rgba(15, 23, 42, 0.08);
-		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		padding: 14px;
-		display: grid;
-		gap: 10px;
-		position: sticky;
-		top: 16px;
-		align-self: start;
-	}
-
-	.sideHeader {
-		display: grid;
-		gap: 6px;
-	}
-
-	.sideTitle {
-		margin: 0;
-		font-size: 13px;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: rgba(15, 23, 42, 0.72);
-		font-weight: 900;
-	}
-
-	.sideHint {
-		margin: 0;
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.textarea {
-		width: 100%;
-		resize: none;
-		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.14);
-		padding: 10px 10px;
-		font-size: 12px;
-		line-height: 1.4;
-		background: rgba(255, 255, 255, 0.92);
-		transition: border-color 140ms ease, box-shadow 140ms ease;
-	}
-	.textarea:focus {
-		outline: none;
-		border-color: rgba(16, 185, 129, 0.45);
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
-	}
-
-	.btnPrimary {
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
-		padding: 10px 12px;
-		border-radius: 14px;
-		border: 1px solid rgba(16, 185, 129, 0.45);
-		background: rgba(16, 185, 129, 0.95);
-		color: #fff;
-		font-size: 12px;
-		font-weight: 900;
-		cursor: pointer;
-		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
-		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
-	}
-	.btnPrimary:hover {
-		filter: brightness(1.02);
-		transform: translateY(-1px);
-	}
-	.btnPrimary:active {
-		transform: translateY(0px);
-	}
-	.btnPrimary:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-		box-shadow: none;
-	}
-
-	.state {
-		padding: 12px;
-		border-radius: 16px;
-		border: 1px dashed rgba(15, 23, 42, 0.18);
-		background: rgba(248, 250, 252, 0.85);
-		display: grid;
-		gap: 10px;
-	}
-	.state.error {
-		border-style: solid;
-		border-color: rgba(239, 68, 68, 0.22);
-		background: rgba(239, 68, 68, 0.06);
-		color: rgba(185, 28, 28, 1);
-		font-weight: 900;
-	}
-	.state.empty {
-		border-style: solid;
-		border-color: rgba(15, 23, 42, 0.1);
-	}
-
-	.emptyTitle {
-		font-weight: 900;
-		color: rgba(15, 23, 42, 0.78);
-	}
-	.emptyText {
-		font-size: 12px;
-		color: rgba(15, 23, 42, 0.55);
-	}
-
-	.skeleton {
-		height: 12px;
-		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			rgba(15, 23, 42, 0.06),
-			rgba(15, 23, 42, 0.1),
-			rgba(15, 23, 42, 0.06)
-		);
-		background-size: 200% 100%;
-		animation: shimmer 1.1s infinite linear;
-	}
-	@keyframes shimmer {
-		0% {
-			background-position: 200% 0;
-		}
-		100% {
-			background-position: -200% 0;
-		}
-	}
-
-	@media (max-width: 520px) {
-		.side {
-			position: static;
-		}
-	}
-</style>
