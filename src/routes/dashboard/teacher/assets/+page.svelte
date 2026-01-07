@@ -72,12 +72,12 @@
 
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
+			if (!res.ok) throw new Error(`Er is een fout opgetreden met het laden van de assets (${res.status})`);
 			const data = await res.json();
 			assets = Array.isArray(data) ? data : data.data ?? [];
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Could not load assets.';
+			error = e?.message ?? 'Er is een fout opgetreden met het laden van de assets';
 		} finally {
 			loading = false;
 		}
@@ -93,8 +93,8 @@
 
 	async function createAsset() {
 		if (!newLabel.trim()) return alert('Label is required.');
-		if (!newImageFile) return alert('Choose an image.');
-		if (newWidth <= 0 || newHeight <= 0) return alert('Choose a valid grid size.');
+		if (!newImageFile) return alert('Kies een afbeelding.');
+		if (newWidth <= 0 || newHeight <= 0) return alert('Kies een passende grid groote');
 
 		creating = true;
 
@@ -113,7 +113,7 @@
 			});
 
 			if (!res.ok) {
-				console.error('Create asset error:', res.status, await res.text());
+				console.error('Asset aanmaken error:', res.status, await res.text());
 				alert('Aanmaken van asset mislukt. Check de console.');
 				return;
 			}
@@ -283,23 +283,24 @@
 	<div class="container">
 		<header class="topbar">
 			<div>
-				<h1 class="title">Asset Overview</h1>
-				<p class="subtitle">Upload new objects and manage what students can use.</p>
+				<h1 class="title">Asset overzicht</h1>
+				<p class="subtitle">Nieuwe assets toevoegen een toegankelijkheid aanpassen
+				</p>
 			</div>
 
-			<a href="/dashboard/teacher" class="backlink">← Back</a>
+			<a href="/dashboard/teacher" class="backlink">← Terug</a>
 		</header>
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Add Asset</h2>
-				<p class="cardHint">Pick a size on the grid, then upload an image.</p>
+				<h2 class="cardTitle">Asset overzicht</h2>
+				<p class="cardHint">Kies een grote op het grid en upload dan een foto</p>
 			</div>
 
 			<div class="createLayout">
 				<div class="gridPicker">
 					<div class="gridMeta">
-						<span class="gridLabel">Size</span>
+						<span class="gridLabel">Grote</span>
 						<span class="gridValue">{newWidth} × {newHeight}</span>
 					</div>
 
@@ -336,14 +337,14 @@
 					</div>
 
 					<div class="field">
-						<label class="label">Image</label>
+						<label class="label">Foto</label>
 						<input type="file" accept="image/*" class="file" on:change={handleFileChange} />
 						{#if newImagePreview}
 							<div class="thumbRow">
 								<img src={newImagePreview} class="thumb" alt="Selected image preview" />
 								<div class="thumbMeta">
-									<div class="thumbTitle">Preview</div>
-									<div class="thumbSub">This is how it’ll look in the toolbox.</div>
+									<div class="thumbTitle">Overzicht</div>
+									<div class="thumbSub">Zo zal het eruit zien in de applicatie</div>
 								</div>
 							</div>
 						{/if}
@@ -351,19 +352,19 @@
 
 					<div class="fieldRow">
 						<div class="field">
-							<label class="label">Width</label>
+							<label class="label">Breedte</label>
 							<input class="input" readonly bind:value={newWidth} />
 						</div>
 
 						<div class="field">
-							<label class="label">Height</label>
+							<label class="label">Hoogte</label>
 							<input class="input" readonly bind:value={newHeight} />
 						</div>
 					</div>
 
 					<label class="toggle">
 						<input type="checkbox" bind:checked={newIsAvailable} />
-						<span class="toggleText">Available for students</span>
+						<span class="toggleText">Beschikbaar voor studenten</span>
 					</label>
 
 					<div class="actions">
@@ -377,8 +378,8 @@
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Existing Assets</h2>
-				<p class="cardHint">Hide/show, edit, or delete assets.</p>
+				<h2 class="cardTitle">Bestaande Assets</h2>
+				<p class="cardHint">Verberg/laat zien, bewerk, of verwijder assets.</p>
 			</div>
 
 			{#if loading}
@@ -390,16 +391,16 @@
 			{:else if error}
 				<div class="state error">{error}</div>
 			{:else if assets.length === 0}
-				<div class="state">No assets found.</div>
+				<div class="state">Geen assets gevonden.</div>
 			{:else}
 				<div class="tableWrap">
 					<table class="table">
 						<thead>
 							<tr>
-								<th>Preview</th>
+								<th>Overzicht</th>
 								<th>Label</th>
-								<th>Size</th>
-								<th>Available</th>
+								<th>Grote</th>
+								<th>Beschikbaar</th>
 								<th class="right"></th>
 							</tr>
 						</thead>
@@ -461,7 +462,7 @@
 		<div class="modalBackdrop" on:click|self={closeEdit}>
 			<div class="modal">
 				<div class="modalHeader">
-					<h3 class="modalTitle">Edit asset</h3>
+					<h3 class="modalTitle">Asset bewerken</h3>
 					<button class="modalClose" on:click={closeEdit}>✕</button>
 				</div>
 
@@ -473,29 +474,29 @@
 
 					<div class="fieldRow">
 						<div class="field">
-							<label class="label">Width</label>
+							<label class="label">Breedte</label>
 							<input type="number" min="1" class="input" bind:value={editWidth} />
 						</div>
 						<div class="field">
-							<label class="label">Height</label>
+							<label class="label">Hoogte</label>
 							<input type="number" min="1" class="input" bind:value={editHeight} />
 						</div>
 					</div>
 
 					<div class="field">
-						<label class="label">Image (optional new)</label>
+						<label class="label">Foto (optioneel om nieuwe op te geven)</label>
 						<input type="file" accept="image/*" class="file" on:change={handleEditFileChange} />
 
 						<div class="thumbRow" style="margin-top:10px;">
 							<div class="thumbWrap">
 								<img src={`${ASSET_BASE}${editing.image_url}`} class="thumb" alt="Current" />
-								<div class="thumbMini">Current</div>
+								<div class="thumbMini">Huidige</div>
 							</div>
 
 							{#if editImagePreview}
 								<div class="thumbWrap">
 									<img src={editImagePreview} class="thumb" alt="New preview" />
-									<div class="thumbMini">New</div>
+									<div class="thumbMini">Nieuwe</div>
 								</div>
 							{/if}
 						</div>
@@ -503,14 +504,14 @@
 
 					<label class="toggle">
 						<input type="checkbox" bind:checked={editIsAvailable} />
-						<span class="toggleText">Available for students</span>
+						<span class="toggleText">Beschikbaarheid voor studenten</span>
 					</label>
 				</div>
 
 				<div class="modalActions">
 					<button class="btnGhost" on:click={closeEdit} disabled={savingEdit}>Cancel</button>
 					<button class="btnPrimary" on:click={saveEdit} disabled={savingEdit}>
-						{savingEdit ? 'Saving…' : 'Save changes'}
+						{savingEdit ? 'Saving…' : 'Wijzigingen opslaan'}
 					</button>
 				</div>
 			</div>

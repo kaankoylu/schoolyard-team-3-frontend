@@ -22,7 +22,7 @@
         headers: { Accept: "application/json" }
       });
 
-      if (!res.ok) throw new Error(`Load classes failed (${res.status})`);
+      if (!res.ok) throw new Error(`Fout met laden van de klassen (${res.status})`);
 
       const data = await res.json();
       classes = Array.isArray(data) ? data : [];
@@ -51,7 +51,7 @@
       if (!res.ok) {
         const t = await res.text();
         console.error(t);
-        alert("Add class failed");
+        alert("Er is een fout opgetreden met het toevoegen van de klas");
         return;
       }
 
@@ -59,7 +59,7 @@
       await loadClasses();
     } catch (e) {
       console.error(e);
-      alert("Netwerkfout bij class toevoegen.");
+      alert("Netwerkfout bij klas toevoegen.");
     }
   }
 
@@ -80,7 +80,7 @@
       if (!res.ok) {
         const t = await res.text();
         console.error(t);
-        alert("Generate code failed");
+        alert("Er is een fout opgetreden met het aanmaken van de code");
         return;
       }
 
@@ -115,12 +115,12 @@ window.open("/dashboard/teacher/code-screen", "_blank");
 </script>
 
 <div class="bg-white shadow-md rounded-xl p-6 flex flex-col gap-4 w-full flex-1">
-  <h2 class="text-xl font-semibold">Generate Class Code</h2>
+  <h2 class="text-xl font-semibold">Klassen code maken</h2>
 
   <div class="flex gap-2">
     <input
       class="px-4 py-2 rounded-lg border w-full"
-      placeholder="New class name..."
+      placeholder="Nieuwe klas naam..."
       bind:value={newClassName}
       disabled={generating}
     />
@@ -129,7 +129,7 @@ window.open("/dashboard/teacher/code-screen", "_blank");
       on:click={addClass}
       disabled={generating}
     >
-      Add
+      Toevoegen
     </button>
   </div>
 
@@ -138,7 +138,7 @@ window.open("/dashboard/teacher/code-screen", "_blank");
     class="px-4 py-2 rounded-lg border w-full"
     disabled={loadingClasses || generating}
   >
-    <option value="">{loadingClasses ? "Loading classes..." : "Select a class..."}</option>
+    <option value="">{loadingClasses ? "Klassen laden..." : "Selecteer een klas..."}</option>
     {#each classes as cls}
       <option value={cls.id}>{cls.name}</option>
     {/each}
@@ -149,12 +149,12 @@ window.open("/dashboard/teacher/code-screen", "_blank");
     on:click={generateCode}
     disabled={!selectedClassId || generating}
   >
-    {generating ? "Generating..." : "Generate Code"}
+    {generating ? "Maken..." : "Code is gemaakt"}
   </button>
 
   {#if generatedCode}
     <p class="text-gray-600">
-      Last generated code: <strong>{generatedCode}</strong>
+      Laatst gemaakte code: <strong>{generatedCode}</strong>
     </p>
   {/if}
 </div>

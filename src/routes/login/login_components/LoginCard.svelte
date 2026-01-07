@@ -33,7 +33,7 @@
       await api.post("/api/login", { email, password });
       goto("/dashboard/teacher");
     } catch (err: any) {
-      error = extractErrorMessage(err, "Login failed");
+      error = extractErrorMessage(err, "Er is iets fout gegaan met het inloggen");
     }
   }
 
@@ -46,7 +46,7 @@
     const classCode = code.trim().toUpperCase();
 
     if (!studentName || !classCode) {
-      error = "Name and code are required";
+      error = "Vul je naam en code in"; 
       return;
     }
 
@@ -59,14 +59,14 @@
 
       if (res.status === 422) {
         const data = await res.json().catch(() => null);
-        error = data?.message ?? "Invalid or expired code";
+        error = data?.message ?? "De code is verlopen of ongeldig";
         return;
       }
 
       if (!res.ok) {
         const t = await res.text();
         console.error(t);
-        error = "Student login failed";
+        error = "Er is iets fout gegaan met het inloggen als student";
         return;
       }
 
@@ -85,7 +85,7 @@
       goto("/dashboard/student");
     } catch (e) {
       console.error(e);
-      error = "Student login failed";
+      error = "Er is iets fout gegaan met het inloggen als student";
     }
   }
 
@@ -95,7 +95,7 @@
     error = "";
 
     if (regPassword !== regPasswordConfirm) {
-      error = "Passwords do not match";
+      error = "Onjuist wachtwoord";
       return;
     }
 
@@ -109,7 +109,7 @@
 
       goto("/login");
     } catch (err: any) {
-      error = extractErrorMessage(err, "Registration failed");
+      error = extractErrorMessage(err, "Er is een fout opgetreden met de registratie");
     }
   }
 </script>
@@ -121,7 +121,7 @@
   style={active ? "border-color: #DAB2FF;" : ""}>
 
   {#if mode === "teacher"}
-    <h2 class="text-xl font-semibold">Teacher Login</h2>
+    <h2 class="text-xl font-semibold">Docenten Login</h2>
     <p class="text-gray-500 text-sm mb-6">Log in met jouw eigen account</p>
 
     <form class="space-y-4" on:submit={handleTeacherLogin}>
@@ -221,7 +221,7 @@
     </form>
 
   {:else if mode === "register"}
-    <h2 class="text-xl font-semibold">Create account</h2>
+    <h2 class="text-xl font-semibold">Maak een account</h2>
     <p class="text-gray-500 text-sm mb-6">Maak een nieuw account aan.</p>
 
     <form class="space-y-4" on:submit={handleRegister}>
