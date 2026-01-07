@@ -16,7 +16,7 @@
         </svg>
 
         <span class="text-black font-medium text-lg">
-          Schoolyard Designer
+          Schoolplein ontwerper
         </span>
       </div>
 

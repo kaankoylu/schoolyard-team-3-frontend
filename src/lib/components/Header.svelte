@@ -16,12 +16,12 @@
         </svg>
 
         <span class="text-black font-medium text-lg">
-          Schoolyard Designer
+          Schoolplein ontwerper
         </span>
       </div>
 
 		<a href="/login" class="text-white !text-white bg-black hover:bg-brand-strong px-3 py-2 rounded-md no-underline inline-block">
-			Login
+			Inloggen
 		</a>
 
     </div>
