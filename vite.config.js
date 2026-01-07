@@ -5,6 +5,23 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+
+	// ✅ DEV SERVER PROXY (NO CORS)
+	// Frontend calls /api/... and /storage/... (same-origin),
+	// Vite forwards them to Laravel running on http://localhost:8080
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://localhost:8080',
+				changeOrigin: true
+			},
+			'/storage': {
+				target: 'http://localhost:8080',
+				changeOrigin: true
+			}
+		}
+	},
+
 	test: {
 		expect: { requireAssertions: true },
 		projects: [

@@ -1,36 +1,67 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	// --- API base ---
-	const API_BASE = 'http://localhost';
-	const ASSET_BASE = API_BASE; // for images
+	/**
+	 * ✅ NO HARDCODED HOSTS
+	 * We always use same-origin paths:
+	 *  - API:     /api/...
+	 *  - images:  /storage/... (or whatever backend returns)
+	 *
+	 * Vite proxy forwards /api (and /storage) to Laravel on :8080.
+	 */
+	const API_BASE = '';
+	const ASSET_BASE = '';
 
 	// --- ASSETS FROM BACKEND ---
 	type Asset = {
 		id: number;
 		slug: string;
 		label: string;
-		image_url: string;
+		image_url: string; // can be '/storage/..' or full 'http..'
 		width: number;
 		height: number;
 		is_available?: boolean | number;
+		[key: string]: any;
 	};
 
 	let assets: Asset[] = [];
 	let assetsLoading = true;
 	let assetsError = '';
 
+	/**
+	 * ✅ Build a safe image src:
+	 * - if backend returns absolute URL => use it
+	 * - if backend returns '/storage/...' => use same-origin
+	 * - if backend returns 'storage/...' => normalize to '/storage/...'
+	 */
+	function assetSrc(url?: string) {
+		if (!url) return '';
+		const u = String(url);
+
+		if (u.startsWith('http://') || u.startsWith('https://')) return u;
+		if (!u.startsWith('/')) return `/${u}`;
+		return `${ASSET_BASE}${u}`;
+	}
+
 	onMount(async () => {
+		assetsLoading = true;
+		assetsError = '';
+
 		try {
-			const res = await fetch(`${API_BASE}/api/assets`);
+			const res = await fetch(`${API_BASE}/api/assets`, {
+				headers: { Accept: 'application/json' }
+			});
+
 			if (!res.ok) throw new Error(`kan assets niet laden (${res.status})`);
 
 			const data = await res.json();
 			const allAssets = Array.isArray(data) ? data : [];
-			assets = allAssets.filter((a) => a.is_available === true || a.is_available === 1);
+
+			assets = allAssets.filter((a: Asset) => a?.is_available === true || a?.is_available === 1);
 		} catch (e: any) {
 			console.error(e);
 			assetsError = e?.message ?? 'Kon assets niet laden.';
+			assets = [];
 		} finally {
 			assetsLoading = false;
 		}
@@ -46,15 +77,14 @@
 	type PlacedAsset = {
 		instanceId: number;
 		asset: Asset;
-		row: number; // 0-based
-		col: number; // 0-based
-		rotation: number; // 0, 90, 180, 270
+		row: number;
+		col: number;
+		rotation: number;
 	};
 
 	let placedAssets: PlacedAsset[] = [];
 	let nextInstanceId = 1;
 
-	// ✅ student session helper (class + name)
 	type StudentSession = {
 		class_id: number;
 		student_name: string;
@@ -88,15 +118,12 @@
 			rows,
 			cols,
 			backgroundImage,
-
-			// ✅ attach class + student name to the design
 			class_id: session?.class_id ?? null,
 			student_name: session?.student_name ?? null,
 			class_code: session?.code ? session.code.toUpperCase() : null,
-
 			placedAssets: placedAssets.map((p) => ({
 				instanceId: p.instanceId,
-				assetId: p.asset.id, // DB id
+				assetId: p.asset.id,
 				label: p.asset.label,
 				row: p.row,
 				col: p.col,
@@ -113,9 +140,6 @@
 		alert('Design logged in de console (open DevTools → Console).');
 	}
 
-	/**
-	 * Save current design to the Laravel backend.
-	 */
 	async function saveDesignToBackend() {
 		const payload = buildDesignPayload();
 
@@ -145,7 +169,7 @@
 		}
 	}
 
-	// Tutorial state: mascot speech bubbles
+	// Tutorial state
 	let showTutorial = false;
 
 	type TutorialBubble = {
@@ -186,23 +210,17 @@
 	let history: PlacedAsset[][] = [];
 	const MAX_HISTORY = 50;
 
-	// delete mode toggle
 	let deleteMode = false;
 
-	// drag source type
 	type DragSource = { type: 'palette'; asset: Asset } | { type: 'placed'; instanceId: number };
 	let dragSource: DragSource | null = null;
 
 	let gridEl: HTMLDivElement | null = null;
 
-	// ===== helpers =====
 	function pushHistory() {
 		const snapshot = placedAssets.map((p) => ({ ...p }));
 		history = [...history, snapshot];
-
-		if (history.length > MAX_HISTORY) {
-			history = history.slice(history.length - MAX_HISTORY);
-		}
+		if (history.length > MAX_HISTORY) history = history.slice(history.length - MAX_HISTORY);
 	}
 
 	function clampPosition(row: number, col: number, asset: Asset, rotation: number) {
@@ -223,7 +241,6 @@
 
 	function getRotatedSize(asset: Asset, rotation: number) {
 		const normalizedRotation = ((rotation % 360) + 360) % 360;
-
 		if (normalizedRotation === 90 || normalizedRotation === 270) {
 			return { width: asset.height, height: asset.width };
 		}
@@ -234,12 +251,10 @@
 		return placedAssets.filter((p) => p.asset.id === assetId).length;
 	}
 
-	// ===== drag from palette =====
 	function handlePaletteDragStart(asset: Asset) {
 		dragSource = { type: 'palette', asset };
 	}
 
-	// ===== drag existing placed asset =====
 	function handlePlacedDragStart(instanceId: number) {
 		dragSource = { type: 'placed', instanceId };
 	}
@@ -252,7 +267,6 @@
 		event.preventDefault();
 	}
 
-	// Drop on the grid: compute row/col from mouse position
 	function handleGridDrop(event: DragEvent) {
 		event.preventDefault();
 
@@ -287,10 +301,9 @@
 			};
 
 			placedAssets = [...placedAssets, placed];
-		} else if (source.type === 'placed') {
+		} else {
 			placedAssets = placedAssets.map((p) => {
 				if (p.instanceId !== source.instanceId) return p;
-
 				const { row, col } = clampPosition(baseRow, baseCol, p.asset, p.rotation);
 				return { ...p, row, col };
 			});
@@ -301,7 +314,6 @@
 
 	function handleAssetClick(instanceId: number) {
 		if (!deleteMode) return;
-
 		pushHistory();
 		placedAssets = placedAssets.filter((p) => p.instanceId !== instanceId);
 	}
@@ -311,24 +323,20 @@
 
 		placedAssets = placedAssets.map((p) => {
 			if (p.instanceId !== instanceId) return p;
-
 			const newRotation = (p.rotation + 90) % 360;
 			const { row, col } = clampPosition(p.row, p.col, p.asset, newRotation);
-
 			return { ...p, rotation: newRotation, row, col };
 		});
 	}
 
 	function resetGrid() {
 		if (placedAssets.length === 0) return;
-
 		pushHistory();
 		placedAssets = [];
 	}
 
 	function undo() {
 		if (history.length === 0) return;
-
 		const prev = history[history.length - 1];
 		history = history.slice(0, -1);
 		placedAssets = prev;
@@ -340,7 +348,6 @@
 </script>
 
 <div class="designer-page">
-	<!-- SIDEBAR: assets -->
 	<aside class="sidebar">
 		<div class="sidebar-top">
 			<h2 class="sidebar-title">Jouw Toolbox</h2>
@@ -354,15 +361,10 @@
 		{:else}
 			<div class="asset-list">
 				{#each assets as asset}
-					<div
-						class="asset"
-						draggable="true"
-						on:dragstart={() => handlePaletteDragStart(asset)}
-						on:dragend={handleDragEnd}
-					>
+					<div class="asset" draggable="true" on:dragstart={() => handlePaletteDragStart(asset)} on:dragend={handleDragEnd}>
 						<div class="asset-main">
 							<div class="asset-thumb">
-								<img src={`${ASSET_BASE}${asset.image_url}`} alt={asset.label} />
+								<img src={assetSrc(asset.image_url)} alt={asset.label} />
 							</div>
 
 							<div class="asset-text">
@@ -389,14 +391,11 @@
 		</div>
 	</aside>
 
-	<!-- MAIN: grid -->
 	<main class="grid-wrapper">
 		<div class="grid-header">
 			<div>
 				<h2 class="grid-title">Jouw ontwerp</h2>
-				<p class="grid-subtitle">
-					Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.
-				</p>
+				<p class="grid-subtitle">Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.</p>
 			</div>
 		</div>
 
@@ -405,9 +404,7 @@
 				<div class="tutorial-card mascot-card">
 					<div class="tutorial-header">
 						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}
-							>✕</button
-						>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>✕</button>
 					</div>
 
 					<div class="mascot-layout">
@@ -424,15 +421,10 @@
 							<div class="bubble-controls">
 								<button class="btn secondary" type="button" on:click={prevBubble}>← Vorige</button>
 								<span class="bubble-counter">{currentBubble + 1} / {mascotBubbles.length}</span>
-								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button
-								>
+								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button>
 							</div>
 
-							<button
-								type="button"
-								class="btn primary mascot-start-btn"
-								on:click={() => (showTutorial = false)}
-							>
+							<button type="button" class="btn primary mascot-start-btn" on:click={() => (showTutorial = false)}>
 								Ik snap het, laten we ontwerpen! 🎨
 							</button>
 						</div>
@@ -441,42 +433,26 @@
 			</div>
 		{/if}
 
-		<!-- control buttons -->
 		<div class="toolbar">
 			<div class="toolbar-left">
-				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}
-					>❓ Uitleg</button
-				>
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Uitleg</button>
 
-				<button
-					type="button"
-					class="btn secondary"
-					on:click={toggleDeleteMode}
-					class:active={deleteMode}
-				>
+				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
 					{deleteMode ? '❌ Uit delete modes gaan' : '🗑 Delete mode'}
 				</button>
 
-				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}
-					>↩️ Undo</button
-				>
+				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
 				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Opnieuw doen</button>
 			</div>
 
 			<div class="toolbar-right">
-				<button class="btn secondary" type="button" on:click={saveDesignToConsole}
-					>💾 Console</button
-				>
+				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
 				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Opslaan</button>
 			</div>
 		</div>
 
-		<div
-			class="design-area"
-			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
-		>
+		<div class="design-area" style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}>
 			<div class="grid-with-scale">
-				<!-- ===== BOVENSTE SCHAAL (meters) ===== -->
 				<div class="scale-top">
 					<div class="scale-corner"></div>
 					{#each Array.from({ length: cols }) as _, i}
@@ -484,7 +460,6 @@
 					{/each}
 				</div>
 
-				<!-- ===== LINKER SCHAAL + GRID ===== -->
 				<div class="scale-body">
 					<div class="scale-left">
 						{#each Array.from({ length: rows }) as _, i}
@@ -492,12 +467,7 @@
 						{/each}
 					</div>
 
-					<div
-						class="grid"
-						bind:this={gridEl}
-						on:dragover={handleDragOver}
-						on:drop={handleGridDrop}
-					>
+					<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
 						{#each Array.from({ length: rows * cols }) as _}
 							<div class="grid-cell"></div>
 						{/each}
@@ -508,30 +478,26 @@
 								draggable="true"
 								on:dragstart={() => handlePlacedDragStart(placed.instanceId)}
 								on:dragend={handleDragEnd}
-								style={`grid-column: ${placed.col + 1} / span ${
-									getRotatedSize(placed.asset, placed.rotation).width
-								}; grid-row: ${placed.row + 1} / span ${
-									getRotatedSize(placed.asset, placed.rotation).height
-								}; background-image: url('${ASSET_BASE}${placed.asset.image_url}'); transform: rotate(${placed.rotation}deg);`}
+								style={`grid-column: ${placed.col + 1} / span ${getRotatedSize(placed.asset, placed.rotation).width};
+									grid-row: ${placed.row + 1} / span ${getRotatedSize(placed.asset, placed.rotation).height};
+									background-image: url('${assetSrc(placed.asset.image_url)}');
+									transform: rotate(${placed.rotation}deg);`}
 								title={placed.asset.label}
 								on:click={() => handleAssetClick(placed.instanceId)}
 								on:dblclick|stopPropagation={() => rotateAsset(placed.instanceId)}
-							></div>
+							/>
 						{/each}
 					</div>
 				</div>
 			</div>
 
 			{#if deleteMode}
-				<div class="delete-banner">
-					Delete mode is aan — klik op een object om het te verwijderen.
-				</div>
+				<div class="delete-banner">Delete mode is aan — klik op een object om het te verwijderen.</div>
 			{/if}
 		</div>
 
 		<p class="hint">
-			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
-			Delete-modus + klik is een object verwijderen
+			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren. Delete-modus + klik is een object verwijderen
 		</p>
 	</main>
 </div>
@@ -546,7 +512,6 @@
 		background-attachment: fixed;
 	}
 
-	/* layout */
 	.designer-page {
 		display: grid;
 		grid-template-columns: 280px 1fr;
@@ -556,7 +521,6 @@
 		background: transparent;
 	}
 
-	/* sidebar */
 	.sidebar {
 		background: rgba(249, 250, 251, 0.92);
 		border-radius: 1.1rem;
@@ -611,10 +575,7 @@
 		background: rgba(255, 255, 255, 0.95);
 		border: 1px solid rgba(229, 231, 235, 0.95);
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-		transition:
-			transform 0.12s ease,
-			box-shadow 0.12s ease,
-			border-color 0.12s ease;
+		transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 	}
 
 	.asset:hover {
@@ -710,7 +671,6 @@
 		list-style: disc;
 	}
 
-	/* main */
 	.grid-wrapper {
 		display: flex;
 		flex-direction: column;
@@ -765,12 +725,8 @@
 		align-items: center;
 		gap: 0.35rem;
 		font-weight: 800;
-		transition:
-			transform 0.12s ease,
-			background-color 0.12s ease,
-			box-shadow 0.12s ease,
-			border-color 0.12s ease,
-			opacity 0.12s ease;
+		transition: transform 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease,
+			border-color 0.12s ease, opacity 0.12s ease;
 		user-select: none;
 	}
 
@@ -811,26 +767,63 @@
 		box-shadow: 0 12px 22px rgba(239, 68, 68, 0.14);
 	}
 
-	/* ✅ KEEP MAP/GRID SIZE EXACTLY THE SAME AS YOUR ORIGINAL */
 	.design-area {
 		position: relative;
 		width: 1000px;
 		height: 520px;
 		max-width: 100%;
 		overflow: hidden;
-
 		background-size: cover;
 		background-position: center;
 		background-repeat: no-repeat;
-
 		border-radius: 1.1rem;
 		border: 2px solid rgba(34, 197, 94, 0.6);
 		padding: 6px;
-
-		box-shadow:
-			0 20px 40px rgba(15, 23, 42, 0.55),
-			inset 0 0 0 1px rgba(16, 185, 129, 0.18);
+		box-shadow: 0 20px 40px rgba(15, 23, 42, 0.55), inset 0 0 0 1px rgba(16, 185, 129, 0.18);
 		background-color: transparent;
+	}
+
+	/* ✅ SCALE LAYOUT (you were missing desktop styles) */
+	.grid-with-scale {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.scale-top {
+		display: grid;
+		grid-template-columns: 40px repeat(var(--cols), 1fr);
+		gap: 0;
+		margin-bottom: 4px;
+	}
+
+	.scale-body {
+		display: grid;
+		grid-template-columns: 40px 1fr;
+		gap: 0;
+		height: 100%;
+	}
+
+	.scale-left {
+		display: grid;
+		grid-template-rows: repeat(var(--rows), 1fr);
+		gap: 0;
+	}
+
+	.scale-corner {
+		width: 40px;
+	}
+
+	.scale-label {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 0.72rem;
+		font-weight: 900;
+		color: rgba(6, 95, 70, 0.95);
+		user-select: none;
+		text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
 	}
 
 	.grid {
@@ -842,12 +835,28 @@
 		gap: 2px;
 		background: transparent;
 		position: relative;
+		z-index: 2; /* ✅ above overlay */
 	}
 
+	/* ✅ THIS is the missing visual grid overlay */
+	.design-area::after {
+		content: '';
+		position: absolute;
+		inset: 6px;
+		border-radius: 1rem;
+		background:
+			linear-gradient(rgba(0, 0, 0, 0.25) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(0, 0, 0, 0.25) 1px, transparent 1px);
+		background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
+		pointer-events: none;
+		z-index: 1; /* ✅ between map and grid */
+	}
+
+	/* make each cell slightly visible too */
 	.grid-cell {
-		background: rgba(249, 250, 251, 0.32);
+		background: rgba(255, 255, 255, 0.12);
+		border: 1px solid rgba(0, 0, 0, 0.2);
 		border-radius: 0.35rem;
-		border: 1px solid rgba(34, 197, 94, 0.42);
 	}
 
 	.placed-asset {
@@ -856,9 +865,7 @@
 		background-repeat: no-repeat;
 		border-radius: 0.35rem;
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
-		transition:
-			transform 0.15s ease,
-			box-shadow 0.15s ease;
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
 		border: 1px solid rgba(255, 255, 255, 0.18);
 	}
 
@@ -905,9 +912,7 @@
 		background: #f9fafb;
 		border-radius: 1.25rem;
 		border: 1px solid #e5e7eb;
-		box-shadow:
-			0 24px 60px rgba(15, 23, 42, 0.35),
-			0 0 0 1px rgba(148, 163, 184, 0.4);
+		box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(148, 163, 184, 0.4);
 		padding: 1.25rem 1.5rem;
 		display: flex;
 		flex-direction: column;

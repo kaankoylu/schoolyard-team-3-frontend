@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	const API_BASE = 'http://localhost';
+	// ✅ same-origin, uses Vite proxy (/api -> Laravel)
+	const API_BASE = '';
 
 	type PlacedAsset = {
 		instanceId?: number;
@@ -35,14 +36,10 @@
 		background_image?: string | null;
 		created_at?: string;
 
-		// student info
 		class_id?: number | null;
 		student_name?: string | null;
-
-		// optional if you still return it
 		class_code?: string | null;
 
-		// relation from backend (could be snake_case or camelCase)
 		schoolClass?: { id?: number; name?: string } | null;
 		school_class?: { id?: number; name?: string } | null;
 
@@ -50,6 +47,11 @@
 		placed_assets?: PlacedAsset[];
 
 		feedback?: string | null;
+
+		// ✅ add inferred values (frontend only)
+		_inferredClassId?: number | null;
+		_inferredClassName?: string | null;
+
 		[key: string]: any;
 	};
 
@@ -57,33 +59,67 @@
 	let loading = true;
 	let error = '';
 
-	// classes for filter
 	let classes: SchoolClass[] = [];
 	let classesLoading = true;
-	let selectedClassId: number | 'all' = 'all';
 
-	// simple feedback state (per design)
+	// ⚠️ select gives strings, so keep it as string union
+	let selectedClassId: 'all' | string = 'all';
+
 	let feedbackByDesign: Record<number, string> = {};
 	let savingFor: number | null = null;
 
+	// quick lookup maps
+	$: classById = new Map<number, SchoolClass>(classes.map((c) => [Number(c.id), c]));
+	$: classByCode = new Map<string, SchoolClass>(
+		classes
+			.map((c) => {
+				const code = (c.active_code?.code ?? c.activeCode?.code ?? '').trim();
+				return code ? [code.toUpperCase(), c] as const : null;
+			})
+			.filter(Boolean) as Array<readonly [string, SchoolClass]>
+	);
+
 	onMount(async () => {
-		await Promise.all([loadClasses(), loadDesigns()]);
+		// load classes first, then designs so we can infer class from class_code
+		await loadClasses();
+		await loadDesigns();
 	});
 
 	async function loadClasses() {
 		classesLoading = true;
 		try {
-			const res = await fetch(`${API_BASE}/api/classes`);
+			const res = await fetch(`${API_BASE}/api/classes`, { headers: { Accept: 'application/json' } });
 			if (!res.ok) throw new Error(`Kan klassen niet laden (${res.status})`);
 			const data = await res.json();
 			classes = Array.isArray(data) ? data : [];
 		} catch (e: any) {
 			console.error(e);
-			// don’t block overview if classes fail
 			classes = [];
 		} finally {
 			classesLoading = false;
 		}
+	}
+
+	function inferClassForDesign(d: Design): { id: number | null; name: string | null } {
+		// 1) already has relation
+		const relName = d.schoolClass?.name ?? d.school_class?.name ?? null;
+		const relId = d.schoolClass?.id ?? d.school_class?.id ?? null;
+		if (relId || relName) return { id: relId ? Number(relId) : null, name: relName };
+
+		// 2) has class_id
+		if (d.class_id) {
+			const cls = classById.get(Number(d.class_id));
+			return { id: Number(d.class_id), name: cls?.name ?? `Klas #${Number(d.class_id)}` };
+		}
+
+		// 3) fallback: match class_code to active_code.code
+		const code = (d.class_code ?? '').trim();
+		if (code) {
+			const cls = classByCode.get(code.toUpperCase());
+			if (cls) return { id: Number(cls.id), name: cls.name };
+		}
+
+		return { id: null, name: '—' };
 	}
 
 	async function loadDesigns() {
@@ -91,21 +127,25 @@
 		error = '';
 
 		try {
-			const res = await fetch(`${API_BASE}/api/designs`);
+			const res = await fetch(`${API_BASE}/api/designs`, { headers: { Accept: 'application/json' } });
 			if (!res.ok) throw new Error(`Kan ontwerpen niet laden (${res.status})`);
 
 			const data = await res.json();
 			const raw = Array.isArray(data) ? data : data.data ?? [];
 
-			// normalize placedAssets + feedback + background field
-			designs = raw.map((d: Design) => ({
-				...d,
-				backgroundImage: d.backgroundImage ?? d.background_image ?? null,
-				placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
-				feedback: d.feedback ?? null
-			}));
+			designs = raw.map((d: Design) => {
+				const inferred = inferClassForDesign(d);
 
-			// preload existing feedback
+				return {
+					...d,
+					backgroundImage: d.backgroundImage ?? d.background_image ?? null,
+					placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
+					feedback: d.feedback ?? null,
+					_inferredClassId: inferred.id,
+					_inferredClassName: inferred.name
+				};
+			});
+
 			feedbackByDesign = designs.reduce<Record<number, string>>((acc, d) => {
 				acc[d.id] = d.feedback ?? '';
 				return acc;
@@ -119,29 +159,27 @@
 	}
 
 	function getClassName(design: Design) {
-		return (
-			design.schoolClass?.name ??
-			design.school_class?.name ??
-			(design.class_id ? `Klas #${design.class_id}` : '—')
-		);
+		return design._inferredClassName ?? '—';
+	}
+
+	function getClassId(design: Design) {
+		return design._inferredClassId ?? null;
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
 		const map = new Map<string, number>();
-
 		for (const item of items) {
 			const label = item.label ?? item.asset?.label ?? 'Unknown';
 			map.set(label, (map.get(label) ?? 0) + 1);
 		}
-
 		return Array.from(map.entries()).map(([label, count]) => ({ label, count }));
 	}
 
-	// filtered list
+	// ✅ filter uses inferred class id too
 	$: filteredDesigns =
 		selectedClassId === 'all'
 			? designs
-			: designs.filter((d) => Number(d.class_id) === Number(selectedClassId));
+			: designs.filter((d) => Number(getClassId(d)) === Number(selectedClassId));
 
 	async function submitFeedback(designId: number) {
 		const text = feedbackByDesign[designId]?.trim();
@@ -166,10 +204,8 @@
 				return;
 			}
 
-			alert('Feedback opgeslagen 👍');
-
-			// keep local copy in sync
 			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
+			alert('Feedback opgeslagen 👍');
 		} catch (err) {
 			console.error(err);
 			alert('Netwerkfout bij opslaan van feedback.');
@@ -183,6 +219,7 @@
 		return new Date(date).toLocaleString();
 	}
 </script>
+
 
 <div class="page">
 	<div class="container">
@@ -280,7 +317,7 @@
 
 						<div class="content">
 							<div class="row">
-								<h2 class="cardTitle">Ontwerp #{design.id}</h2>
+								<h2 class="cardTitle">{design.student_name}'s Ontwerp #{design.id}</h2>
 								{#if design.created_at}
 									<span class="date">{shortDate(design.created_at)}</span>
 								{/if}
