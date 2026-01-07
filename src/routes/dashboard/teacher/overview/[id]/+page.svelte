@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
+	import { showAlert } from '$lib/utils/alert';
 
 	const API_BASE = 'http://localhost';
 	const ASSET_BASE = API_BASE;
@@ -168,7 +169,8 @@
 				return;
 			}
 
-			alert('Feedback opgeslagen 👍');
+			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
+
 
 			if (design) {
 				design = { ...design, feedback: text };

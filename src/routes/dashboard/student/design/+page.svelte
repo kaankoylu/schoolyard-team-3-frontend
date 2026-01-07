@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { showAlert } from '$lib/utils/alert';
 
 	// --- API base ---
 	const API_BASE = 'http://localhost';
@@ -138,7 +139,7 @@
 
 			const data = await response.json();
 			console.log('✅ Design saved:', data);
-			alert(`Design opgeslagen met ID ${data.id}`);
+			showAlert(`Design opgeslagen met ID ${data.id}`, 'success', 3000); 
 		} catch (err) {
 			console.error('Network / fetch error:', err);
 			alert('Netwerkfout bij opslaan. Draait de backend nog?');
