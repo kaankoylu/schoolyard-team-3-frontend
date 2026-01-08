@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { showAlert } from '$lib/utils/alert';
 
 	// ✅ same-origin, uses Vite proxy (/api -> Laravel)
 	const API_BASE = '';
@@ -208,6 +209,9 @@
 				return;
 			}
 
+			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
+
+			// keep local copy in sync
 			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
 			alert('Feedback opgeslagen 👍');
 		} catch (err) {

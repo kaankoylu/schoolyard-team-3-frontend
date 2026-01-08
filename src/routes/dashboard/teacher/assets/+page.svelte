@@ -72,8 +72,7 @@
 
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok)
-				throw new Error(`Er is een fout opgetreden met het laden van de assets (${res.status})`);
+			if (!res.ok) throw new Error(`Er is een fout opgetreden met het laden van de assets (${res.status})`);
 			const data = await res.json();
 			assets = Array.isArray(data) ? data : (data.data ?? []);
 		} catch (e: any) {
@@ -289,8 +288,9 @@
 	<div class="container">
 		<header class="topbar">
 			<div>
-				<h1 class="title">Asset overzicht</h1>
-				<p class="subtitle">Nieuwe assets toevoegen een toegankelijkheid aanpassen</p>
+				<h1 class="title">Asset Overview</h1>
+				<p class="subtitle">Nieuwe assets toevoegen een toegankelijkheid aanpassen
+				</p>
 			</div>
 
 			<a href="/dashboard/teacher" class="backlink">← Terug</a>
@@ -298,7 +298,7 @@
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Asset overzicht</h2>
+				<h2 class="cardTitle">Asset toevoegen</h2>
 				<p class="cardHint">Kies een grote op het grid en upload dan een foto</p>
 			</div>
 

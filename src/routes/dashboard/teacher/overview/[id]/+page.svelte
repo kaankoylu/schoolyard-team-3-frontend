@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
+	import { showAlert } from '$lib/utils/alert';
 
 	/**
 	 * ✅ SAME-ORIGIN ONLY
@@ -186,10 +187,15 @@
 				throw new Error('Feedback opslaan mislukt');
 			}
 
-			if (design) design = { ...design, feedback: text };
-		} catch (e) {
-			console.error(e);
-			alert('Feedback opslaan mislukt');
+			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
+
+
+			if (design) {
+				design = { ...design, feedback: text };
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Netwerkfout bij opslaan van feedback.');
 		} finally {
 			savingFeedback = false;
 		}
