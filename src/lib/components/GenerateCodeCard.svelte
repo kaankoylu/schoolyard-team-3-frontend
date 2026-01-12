@@ -1,5 +1,5 @@
 <script lang="ts">
-  const API_BASE = "http://localhost";
+  import { onMount } from 'svelte';
 
   type SchoolClass = {
     id: number;
@@ -8,18 +8,20 @@
   };
 
   let classes: SchoolClass[] = [];
-  let selectedClassId: number | "" = "";
-  let generatedCode = "";
-  let newClassName = "";
+  let selectedClassId: number | '' = '';
+  let generatedCode = '';
+  let newClassName = '';
 
   let loadingClasses = false;
   let generating = false;
+  let error = '';
 
   async function loadClasses() {
     loadingClasses = true;
+    error = '';
     try {
-      const res = await fetch(`${API_BASE}/api/classes`, {
-        headers: { Accept: "application/json" }
+      const res = await fetch('/api/classes', {
+        headers: { Accept: 'application/json' }
       });
 
       if (!res.ok) throw new Error(`Fout met laden van de klassen (${res.status})`);
@@ -28,8 +30,8 @@
       classes = Array.isArray(data) ? data : [];
     } catch (e) {
       console.error(e);
-      alert("Kon klassen niet laden. Check de console.");
       classes = [];
+      error = 'Kon klassen niet laden. Check de console.';
     } finally {
       loadingClasses = false;
     }
@@ -38,28 +40,28 @@
   async function addClass() {
     if (!newClassName.trim()) return;
 
+    error = '';
     try {
-      const res = await fetch(`${API_BASE}/api/classes`, {
-        method: "POST",
+      const res = await fetch('/api/classes', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
         },
         body: JSON.stringify({ name: newClassName.trim() })
       });
 
       if (!res.ok) {
-        const t = await res.text();
-        console.error(t);
-        alert("Er is een fout opgetreden met het toevoegen van de klas");
+        console.error(await res.text());
+        error = 'Er is een fout opgetreden met het toevoegen van de klas';
         return;
       }
 
-      newClassName = "";
+      newClassName = '';
       await loadClasses();
     } catch (e) {
       console.error(e);
-      alert("Netwerkfout bij klas toevoegen.");
+      error = 'Netwerkfout bij klas toevoegen.';
     }
   }
 
@@ -67,55 +69,57 @@
     if (!selectedClassId) return;
 
     generating = true;
+    error = '';
     try {
-      const res = await fetch(`${API_BASE}/api/classes/${selectedClassId}/code`, {
-        method: "POST",
+      const res = await fetch(`/api/classes/${selectedClassId}/code`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json"
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
         },
         body: JSON.stringify({ expires_in_minutes: 60 })
       });
 
       if (!res.ok) {
-        const t = await res.text();
-        console.error(t);
-        alert("Er is een fout opgetreden met het aanmaken van de code");
+        console.error(await res.text());
+        error = 'Er is een fout opgetreden met het aanmaken van de code';
         return;
       }
 
       const data = await res.json(); // { id, class_id, code, expires_at, ... }
       generatedCode = data.code;
 
-      const selected = classes.find((c) => c.id === selectedClassId);
+      const selected = classes.find((c) => c.id === Number(selectedClassId));
       const className = selected?.name ?? `Class #${selectedClassId}`;
       const expiresAt = data.expires_at ?? null;
 
-      // Store payload for the code screen route
       localStorage.setItem(
-  "code_screen_data",
-  JSON.stringify({
-    className,
-    code: generatedCode,
-    expiresAt
-  })
-);
+        'code_screen_data',
+        JSON.stringify({
+          className,
+          code: generatedCode,
+          expiresAt
+        })
+      );
 
-window.open("/dashboard/teacher/code-screen", "_blank");
-
+      window.open('/dashboard/teacher/code-screen', '_blank');
     } catch (e) {
       console.error(e);
-      alert("Netwerkfout bij code genereren.");
+      error = 'Netwerkfout bij code genereren.';
     } finally {
       generating = false;
     }
   }
 
-  loadClasses();
+  onMount(loadClasses);
 </script>
 
 <div class="bg-white shadow-md rounded-xl p-6 flex flex-col gap-4 w-full flex-1">
   <h2 class="text-xl font-semibold">Klassen code maken</h2>
+
+  {#if error}
+    <p class="text-red-600">{error}</p>
+  {/if}
 
   <div class="flex gap-2">
     <input
@@ -138,7 +142,7 @@ window.open("/dashboard/teacher/code-screen", "_blank");
     class="px-4 py-2 rounded-lg border w-full"
     disabled={loadingClasses || generating}
   >
-    <option value="">{loadingClasses ? "Klassen laden..." : "Selecteer een klas..."}</option>
+    <option value="">{loadingClasses ? 'Klassen laden...' : 'Selecteer een klas...'}</option>
     {#each classes as cls}
       <option value={cls.id}>{cls.name}</option>
     {/each}
@@ -149,7 +153,7 @@ window.open("/dashboard/teacher/code-screen", "_blank");
     on:click={generateCode}
     disabled={!selectedClassId || generating}
   >
-    {generating ? "Maken..." : "Code is gemaakt"}
+    {generating ? 'Maken...' : 'Maak code'}
   </button>
 
   {#if generatedCode}

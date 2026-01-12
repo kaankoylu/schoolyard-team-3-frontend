@@ -183,29 +183,20 @@
 			: designs.filter((d) => Number(getClassId(d)) === Number(selectedClassId));
 
 	async function submitFeedback(designId: number) {
-	const text = feedbackByDesign[designId]?.trim();
-	if (!text) return;
+		const text = feedbackByDesign[designId]?.trim();
+		if (!text) return;
 
-	savingFor = designId;
+		savingFor = designId;
 
-	try {
-		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-			},
-			body: JSON.stringify({ text })
-		});
-
-		if (!res.ok) {
-			const body = await res.text();
-			console.error('Feedback error', res.status, body);
-			alert('Opslaan van feedback mislukt. Check de console.');
-			return;
-		}
-
-		showAlert('Feedback opgeslagen 👍', 'success', 3000);
+		try {
+			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({ text })
+			});
 
 			if (!res.ok) {
 				const body = await res.text();
@@ -214,11 +205,10 @@
 				return;
 			}
 
-			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
+			showAlert('Feedback opgeslagen 👍', 'success', 3000);
 
 			// keep local copy in sync
 			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
-			alert('Feedback opgeslagen 👍');
 		} catch (err) {
 			console.error(err);
 			alert('Netwerkfout bij opslaan van feedback.');
@@ -226,7 +216,8 @@
 			savingFor = null;
 		}
 	}
-}
+
+
 	
 
 	function shortDate(date?: string) {

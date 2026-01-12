@@ -4,10 +4,7 @@
 	import { page } from '$app/stores';
 	import { showAlert } from '$lib/utils/alert';
 
-	/**
-	 * ✅ SAME-ORIGIN ONLY
-	 * Vite proxy forwards /api and /storage to Laravel.
-	 */
+	
 	const API_BASE = '';
 	const ASSET_BASE = '';
 
@@ -83,14 +80,11 @@
 		const path = u.startsWith('/') ? u : `/${u}`;
 
 		// if backend returns '/storage/...', this will become same-origin '/storage/...'
-		// (your Vite proxy must forward /storage to Laravel)
 		return `${ASSET_BASE}${path}`;
 	}
 
 	function getClassName(d: Design) {
-		return (
-			d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Klas #${d.class_id}` : '—')
-		);
+		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Klas #${d.class_id}` : '—');
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
@@ -167,27 +161,19 @@
 	});
 
 	async function saveFeedback() {
-	const text = feedbackText.trim();
-	if (!text) return;
+		const text = feedbackText.trim();
+		if (!text) return;
 
-	savingFeedback = true;
-	try {
-		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-			},
-			body: JSON.stringify({ text })
-		});
-
-		if (!res.ok) {
-			const body = await res.text();
-			console.error('Feedback save failed:', res.status, body);
-			throw new Error('Feedback opslaan mislukt');
-		}
-
-		showAlert('Feedback opgeslagen 👍', 'success', 3000);
+		savingFeedback = true;
+		try {
+			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({ text })
+			});
 
 			if (!res.ok) {
 				const body = await res.text();
@@ -195,8 +181,7 @@
 				throw new Error('Feedback opslaan mislukt');
 			}
 
-			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
-
+			showAlert('Feedback opgeslagen 👍', 'success', 3000);
 
 			if (design) {
 				design = { ...design, feedback: text };
@@ -208,8 +193,6 @@
 			savingFeedback = false;
 		}
 	}
-}
-
 
 	async function saveGrade() {
 		if (grade === null) return;
@@ -240,13 +223,13 @@
 		}
 	}
 
-	const DEFAULT_BG =
-		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
+	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
 	$: previewBg = normalizeUrl(design?.backgroundImage ?? DEFAULT_BG);
 	$: placedList = (design?.placedAssets ?? []) as PlacedAsset[];
 	$: grouped = groupAssetsByLabel(placedList);
 </script>
+
 
 <div class="page">
 	<div class="container">

@@ -1,4 +1,5 @@
 <script lang="ts">
+	
 	import { onMount, onDestroy, tick } from 'svelte';
 
 	/**
@@ -120,18 +121,21 @@
 
 	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
-	function normalizeUrl(url?: string | null) {
-		if (!url) return '';
+function normalizeUrl(url?: string | null) {
+	if (!url) return '';
 
-		const u = String(url).trim();
+	const u = String(url).trim();
+
+	// absolute URL already
+	if (u.startsWith('http://') || u.startsWith('https://')) return u;
+
+	// normalize to "/..."
+	const path = u.startsWith('/') ? u : `/${u}`;
 
 	// same-origin proxy serves /storage and public assets
-	return path;
+	return `${ASSET_BASE}${path}`;
 }
 
-		// if backend returns '/storage/...', Vite proxy should forward it
-		return `${ASSET_BASE}${path}`;
-	}
 
 	function shortDate(date?: string) {
 		return date ? new Date(date).toLocaleString() : '';
@@ -160,6 +164,9 @@
 			? { width: baseHeight, height: baseWidth }
 			: { width: baseWidth, height: baseHeight };
 	}
+function backroll() {
+	history.back();
+}
 
 	
 	type AssetRow = { id: number; image_url?: string | null; image?: string | null };

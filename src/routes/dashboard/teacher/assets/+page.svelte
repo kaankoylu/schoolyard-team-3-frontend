@@ -1,8 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	const API_BASE = 'http://localhost';
-	const ASSET_BASE = API_BASE;
+	const ASSET_BASE = '';
 
 	type Asset = {
 		id: number;
@@ -71,7 +70,7 @@
 		error = '';
 
 		try {
-			const res = await fetch(`${API_BASE}/api/assets`);
+			const res = await fetch('/api/assets');
 			if (!res.ok) throw new Error(`Er is een fout opgetreden met het laden van de assets (${res.status})`);
 			const data = await res.json();
 			assets = Array.isArray(data) ? data : data.data ?? [];
@@ -107,7 +106,7 @@
 			form.append('is_available', newIsAvailable ? '1' : '0');
 			form.append('image', newImageFile);
 
-			const res = await fetch(`${API_BASE}/api/assets`, {
+			const res = await fetch('/api/assets', {
 				method: 'POST',
 				body: form
 			});
@@ -118,7 +117,7 @@
 				return;
 			}
 
-			await loadAssets(); 
+			await loadAssets();
 
 			// reset form
 			newLabel = '';
@@ -141,7 +140,7 @@
 		togglingId = asset.id;
 
 		try {
-			const res = await fetch(`${API_BASE}/api/assets/${asset.id}`, {
+			const res = await fetch(`/api/assets/${asset.id}`, {
 				method: 'PATCH',
 				headers: {
 					'Content-Type': 'application/json',
@@ -172,7 +171,7 @@
 		deletingId = asset.id;
 
 		try {
-			const res = await fetch(`${API_BASE}/api/assets/${asset.id}`, {
+			const res = await fetch(`/api/assets/${asset.id}`, {
 				method: 'DELETE'
 			});
 
@@ -229,9 +228,8 @@
 		try {
 			let res: Response;
 
-		
 			if (!editImageFile) {
-				res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
+				res = await fetch(`/api/assets/${editing.id}`, {
 					method: 'PATCH',
 					headers: {
 						'Content-Type': 'application/json',
@@ -253,7 +251,7 @@
 				form.append('image', editImageFile);
 				form.append('_method', 'PATCH');
 
-				res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
+				res = await fetch(`/api/assets/${editing.id}`, {
 					method: 'POST',
 					body: form
 				});
@@ -277,6 +275,7 @@
 		}
 	}
 </script>
+
 
 <div class="page">
 	<div class="container">
