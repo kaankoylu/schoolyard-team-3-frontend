@@ -15,7 +15,7 @@
 		<div class="flex w-full flex-col items-center gap-4">
 			<ProfilePicture></ProfilePicture>
 
-			<h2 class="text-xl font-semibold">Marilin Monroe</h2>
+			<h2 class="text-xl font-semibold">Welcome</h2>
 		</div>
 		<div class="flex w-full flex-col items-center gap-4">
 			<a
