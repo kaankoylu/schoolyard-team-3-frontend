@@ -220,7 +220,7 @@
 		savingFor = null;
 	}
 }
-
+	
 
 	function shortDate(date?: string) {
 		if (!date) return '';
