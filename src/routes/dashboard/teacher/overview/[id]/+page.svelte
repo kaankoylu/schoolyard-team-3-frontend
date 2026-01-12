@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { get } from 'svelte/store';
 	import { page } from '$app/stores';
+	import { showAlert } from '$lib/utils/alert';
 
 	/**
 	 * ✅ SAME-ORIGIN ONLY
@@ -166,19 +167,27 @@
 	});
 
 	async function saveFeedback() {
-		const text = feedbackText.trim();
-		if (!text) return;
+	const text = feedbackText.trim();
+	if (!text) return;
 
-		savingFeedback = true;
-		try {
-			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				body: JSON.stringify({ text })
-			});
+	savingFeedback = true;
+	try {
+		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json'
+			},
+			body: JSON.stringify({ text })
+		});
+
+		if (!res.ok) {
+			const body = await res.text();
+			console.error('Feedback save failed:', res.status, body);
+			throw new Error('Feedback opslaan mislukt');
+		}
+
+		showAlert('Feedback opgeslagen 👍', 'success', 3000);
 
 			if (!res.ok) {
 				const body = await res.text();
@@ -186,14 +195,21 @@
 				throw new Error('Feedback opslaan mislukt');
 			}
 
-			if (design) design = { ...design, feedback: text };
-		} catch (e) {
-			console.error(e);
-			alert('Feedback opslaan mislukt');
+			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
+
+
+			if (design) {
+				design = { ...design, feedback: text };
+			}
+		} catch (err) {
+			console.error(err);
+			alert('Netwerkfout bij opslaan van feedback.');
 		} finally {
 			savingFeedback = false;
 		}
 	}
+}
+
 
 	async function saveGrade() {
 		if (grade === null) return;
@@ -235,35 +251,28 @@
 <div class="page">
 	<div class="container">
 		<header class="topbar">
-	<a href="/dashboard/teacher/overview" class="backlink">← Terug naar overzicht</a>
+			<a href="/dashboard/teacher/overview" class="backlink">← Terug naar overzicht</a>
 
-	<div class="titleBlock">
-		<h1 class="title">
 			{#if design}
-				Ontwerp #{design.id}
+				<div class="titleBlock">
+					<h1 class="title">Ontwerp #{design.id}</h1>
+					<p class="subtitle">
+						<span class="pill">Klas: {getClassName(design)}</span>
+						{#if design.student_name}
+							<span class="pill">Student: {design.student_name}</span>
+						{/if}
+						{#if design.created_at}
+							<span class="pill muted">{shortDate(design.created_at)}</span>
+						{/if}
+					</p>
+				</div>
 			{:else}
-				Ontwerp
+				<div class="titleBlock">
+					<h1 class="title">Ontwerp</h1>
+					<p class="subtitle">Details bekijken en feedback geven.</p>
+				</div>
 			{/if}
-		</h1>
-
-		<p class="subtitle">
-			{#if design}
-				<span class="pill">Klas: {getClassName(design)}</span>
-
-				{#if design.student_name}
-					<span class="pill">Student: {design.student_name}</span>
-				{/if}
-
-				{#if design.created_at}
-					<span class="pill muted">{shortDate(design.created_at)}</span>
-				{/if}
-			{:else}
-				<span class="pill muted">Details bekijken en feedback geven.</span>
-			{/if}
-		</p>
-	</div>
-</header>
-
+		</header>
 
 		{#if loading}
 			<div class="state">

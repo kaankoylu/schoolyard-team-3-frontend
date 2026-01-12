@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { showAlert } from '$lib/utils/alert';
 
 	/**
-	 * ✅ NO HARDCODED HOSTS
+	 * NO HARDCODED HOSTS
 	 * We always use same-origin paths:
 	 *  - API:     /api/...
 	 *  - images:  /storage/... (or whatever backend returns)
@@ -28,8 +29,19 @@
 	let assetsLoading = true;
 	let assetsError = '';
 
+	function goBack() {
+		// If user came from another page, go back.
+		if (window.history.length > 1) {
+			window.history.back();
+			return;
+		}
+
+		// Fallback if they opened this page directly (no history)
+		window.location.href = '/dashboard/student';
+	}
+
 	/**
-	 * ✅ Build a safe image src:
+	 *  Build a safe image src:
 	 * - if backend returns absolute URL => use it
 	 * - if backend returns '/storage/...' => use same-origin
 	 * - if backend returns 'storage/...' => normalize to '/storage/...'
@@ -134,12 +146,6 @@
 		};
 	}
 
-	function saveDesignToConsole() {
-		const payload = buildDesignPayload();
-		console.log('🎨 DESIGN PAYLOAD:', payload);
-		alert('Design logged in de console (open DevTools → Console).');
-	}
-
 	async function saveDesignToBackend() {
 		const payload = buildDesignPayload();
 
@@ -162,7 +168,7 @@
 
 			const data = await response.json();
 			console.log('✅ Design saved:', data);
-			alert(`Design opgeslagen met ID ${data.id}`);
+			showAlert(`Design opgeslagen met ID ${data.id}`, 'success', 3000);
 		} catch (err) {
 			console.error('Network / fetch error:', err);
 			alert('Netwerkfout bij opslaan. Draait de backend nog?');
@@ -350,6 +356,8 @@
 <div class="designer-page">
 	<aside class="sidebar">
 		<div class="sidebar-top">
+			<button class="btn secondary" type="button" on:click={goBack}>← Terug</button>
+
 			<h2 class="sidebar-title">Jouw Toolbox</h2>
 			<p class="sidebar-subtitle">Sleep items naar het rooster. Dubbelklik om te draaien.</p>
 		</div>
@@ -361,7 +369,12 @@
 		{:else}
 			<div class="asset-list">
 				{#each assets as asset}
-					<div class="asset" draggable="true" on:dragstart={() => handlePaletteDragStart(asset)} on:dragend={handleDragEnd}>
+					<div
+						class="asset"
+						draggable="true"
+						on:dragstart={() => handlePaletteDragStart(asset)}
+						on:dragend={handleDragEnd}
+					>
 						<div class="asset-main">
 							<div class="asset-thumb">
 								<img src={assetSrc(asset.image_url)} alt={asset.label} />
@@ -395,7 +408,9 @@
 		<div class="grid-header">
 			<div>
 				<h2 class="grid-title">Jouw ontwerp</h2>
-				<p class="grid-subtitle">Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.</p>
+				<p class="grid-subtitle">
+					Bouw een groen en leuk speelplein. Alles wat je plaatst wordt opgeslagen.
+				</p>
 			</div>
 		</div>
 
@@ -404,7 +419,9 @@
 				<div class="tutorial-card mascot-card">
 					<div class="tutorial-header">
 						<h3>Hoe werkt de ontwerptool?</h3>
-						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}>✕</button>
+						<button class="tutorial-close" type="button" on:click={() => (showTutorial = false)}
+							>✕</button
+						>
 					</div>
 
 					<div class="mascot-layout">
@@ -421,10 +438,15 @@
 							<div class="bubble-controls">
 								<button class="btn secondary" type="button" on:click={prevBubble}>← Vorige</button>
 								<span class="bubble-counter">{currentBubble + 1} / {mascotBubbles.length}</span>
-								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button>
+								<button class="btn secondary" type="button" on:click={nextBubble}>Volgende →</button
+								>
 							</div>
 
-							<button type="button" class="btn primary mascot-start-btn" on:click={() => (showTutorial = false)}>
+							<button
+								type="button"
+								class="btn primary mascot-start-btn"
+								on:click={() => (showTutorial = false)}
+							>
 								Ik snap het, laten we ontwerpen! 🎨
 							</button>
 						</div>
@@ -435,23 +457,34 @@
 
 		<div class="toolbar">
 			<div class="toolbar-left">
-				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}>❓ Uitleg</button>
+				<button class="btn secondary" type="button" on:click={() => (showTutorial = true)}
+					>❓ Uitleg</button
+				>
 
-				<button type="button" class="btn secondary" on:click={toggleDeleteMode} class:active={deleteMode}>
+				<button
+					type="button"
+					class="btn secondary"
+					on:click={toggleDeleteMode}
+					class:active={deleteMode}
+				>
 					{deleteMode ? '❌ Uit delete modes gaan' : '🗑 Delete mode'}
 				</button>
 
-				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}>↩️ Undo</button>
+				<button class="btn secondary" type="button" on:click={undo} disabled={history.length === 0}
+					>↩️ Undo</button
+				>
 				<button class="btn secondary" type="button" on:click={resetGrid}>🧹 Opnieuw doen</button>
 			</div>
 
 			<div class="toolbar-right">
-				<button class="btn secondary" type="button" on:click={saveDesignToConsole}>💾 Console</button>
-				<button class="btn primary" type="button" on:click={saveDesignToBackend}>📡 Opslaan</button>
+				<button class="btn primary" type="button" on:click={saveDesignToBackend}>Opslaan</button>
 			</div>
 		</div>
 
-		<div class="design-area" style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}>
+		<div
+			class="design-area"
+			style={`--rows: ${rows}; --cols: ${cols}; background-image: url('${backgroundImage}')`}
+		>
 			<div class="grid-with-scale">
 				<div class="scale-top">
 					<div class="scale-corner"></div>
@@ -467,7 +500,12 @@
 						{/each}
 					</div>
 
-					<div class="grid" bind:this={gridEl} on:dragover={handleDragOver} on:drop={handleGridDrop}>
+					<div
+						class="grid"
+						bind:this={gridEl}
+						on:dragover={handleDragOver}
+						on:drop={handleGridDrop}
+					>
 						{#each Array.from({ length: rows * cols }) as _}
 							<div class="grid-cell"></div>
 						{/each}
@@ -492,12 +530,15 @@
 			</div>
 
 			{#if deleteMode}
-				<div class="delete-banner">Delete mode is aan — klik op een object om het te verwijderen.</div>
+				<div class="delete-banner">
+					Delete mode is aan — klik op een object om het te verwijderen.
+				</div>
 			{/if}
 		</div>
 
 		<p class="hint">
-			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren. Delete-modus + klik is een object verwijderen
+			💡 Sleep een object naar een vakje. Sleep om te verplaatsen, dubbelklik om te roteren.
+			Delete-modus + klik is een object verwijderen
 		</p>
 	</main>
 </div>
@@ -575,7 +616,10 @@
 		background: rgba(255, 255, 255, 0.95);
 		border: 1px solid rgba(229, 231, 235, 0.95);
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.12);
-		transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+		transition:
+			transform 0.12s ease,
+			box-shadow 0.12s ease,
+			border-color 0.12s ease;
 	}
 
 	.asset:hover {
@@ -725,8 +769,12 @@
 		align-items: center;
 		gap: 0.35rem;
 		font-weight: 800;
-		transition: transform 0.12s ease, background-color 0.12s ease, box-shadow 0.12s ease,
-			border-color 0.12s ease, opacity 0.12s ease;
+		transition:
+			transform 0.12s ease,
+			background-color 0.12s ease,
+			box-shadow 0.12s ease,
+			border-color 0.12s ease,
+			opacity 0.12s ease;
 		user-select: none;
 	}
 
@@ -779,7 +827,9 @@
 		border-radius: 1.1rem;
 		border: 2px solid rgba(34, 197, 94, 0.6);
 		padding: 6px;
-		box-shadow: 0 20px 40px rgba(15, 23, 42, 0.55), inset 0 0 0 1px rgba(16, 185, 129, 0.18);
+		box-shadow:
+			0 20px 40px rgba(15, 23, 42, 0.55),
+			inset 0 0 0 1px rgba(16, 185, 129, 0.18);
 		background-color: transparent;
 	}
 
@@ -835,10 +885,10 @@
 		gap: 2px;
 		background: transparent;
 		position: relative;
-		z-index: 2; /* ✅ above overlay */
+		z-index: 2; 
 	}
 
-	/* ✅ THIS is the missing visual grid overlay */
+
 	.design-area::after {
 		content: '';
 		position: absolute;
@@ -849,7 +899,7 @@
 			linear-gradient(90deg, rgba(0, 0, 0, 0.25) 1px, transparent 1px);
 		background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
 		pointer-events: none;
-		z-index: 1; /* ✅ between map and grid */
+		z-index: 1; 
 	}
 
 	/* make each cell slightly visible too */
@@ -865,7 +915,9 @@
 		background-repeat: no-repeat;
 		border-radius: 0.35rem;
 		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22);
-		transition: transform 0.15s ease, box-shadow 0.15s ease;
+		transition:
+			transform 0.15s ease,
+			box-shadow 0.15s ease;
 		border: 1px solid rgba(255, 255, 255, 0.18);
 	}
 
@@ -912,7 +964,9 @@
 		background: #f9fafb;
 		border-radius: 1.25rem;
 		border: 1px solid #e5e7eb;
-		box-shadow: 0 24px 60px rgba(15, 23, 42, 0.35), 0 0 0 1px rgba(148, 163, 184, 0.4);
+		box-shadow:
+			0 24px 60px rgba(15, 23, 42, 0.35),
+			0 0 0 1px rgba(148, 163, 184, 0.4);
 		padding: 1.25rem 1.5rem;
 		display: flex;
 		flex-direction: column;

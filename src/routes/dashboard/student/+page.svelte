@@ -15,7 +15,7 @@
 		<div class="flex w-full flex-col items-center gap-4">
 			<ProfilePicture></ProfilePicture>
 
-			<h2 class="text-xl font-semibold">Marilin Monroe</h2>
+			<h2 class="text-xl font-semibold">Welcome</h2>
 		</div>
 		<div class="flex w-full flex-col items-center gap-4">
 			<a
@@ -41,13 +41,6 @@
 			imagePath="/dashboard/like.png"
 			style="kids"
 		/>
-		<DashboardNavigationCard
-			description="Lees wat jouw nieuwe speeltuin  kan hebben"
-			title="Wiki"
-			buttonName="lees de Wiki"
-			href="fcgv"
-			imagePath="/dashboard/OpenBook.png"
-			style="kids"
-		/>
+	
 	</div>
 </div>

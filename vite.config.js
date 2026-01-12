@@ -7,10 +7,16 @@ export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
 
 	// ✅ DEV SERVER PROXY (NO CORS)
-	// Frontend calls /api/... and /storage/... (same-origin),
-	// Vite forwards them to Laravel running on http://localhost:8080
+	// Frontend calls /api/... and /storage/... (same-origin)
+	// - /api/leaderboard -> LeaderboardMicroservice (3002)
+	// - all other /api -> Laravel (8080)
+	// - /storage -> Laravel (8080)
 	server: {
 		proxy: {
+			'/api/leaderboard': {
+				target: 'http://localhost:3002',
+				changeOrigin: true
+			},
 			'/api': {
 				target: 'http://localhost:8080',
 				changeOrigin: true

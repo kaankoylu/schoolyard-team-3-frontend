@@ -1,13 +1,13 @@
 <script lang="ts">
-	let activeTab: 'teacher' | 'student' | 'admin' | 'register' = 'teacher';
+	let activeTab: 'teacher' | 'student' | 'register' = 'teacher';
 
 	const tabs = [
 		{ id: 'teacher', label: 'Teacher' },
 		{ id: 'student', label: 'Student' },
-		{ id: 'admin', label: 'Administrator' },
 		{ id: 'register', label: 'Create account' }
 	] as const;
 
+	// Nested +page.svelte as component, as in your project
 	import LoginCard from './login_components/LoginCard.svelte';
 </script>
 
@@ -18,6 +18,7 @@
 			<p class="subtitle">Choose a role to sign in, or create a new account.</p>
 		</header>
 
+		<!-- Tabs -->
 		<nav class="tabs" aria-label="Login tabs">
 			{#each tabs as tab}
 				<button
@@ -31,13 +32,12 @@
 			{/each}
 		</nav>
 
+		<!-- Card container -->
 		<section class="cardWrap">
 			{#if activeTab === 'teacher'}
 				<LoginCard mode="teacher" />
 			{:else if activeTab === 'student'}
 				<LoginCard mode="student" />
-			{:else if activeTab === 'admin'}
-				<LoginCard mode="admin" />
 			{:else}
 				<LoginCard mode="register" />
 			{/if}
@@ -50,6 +50,7 @@
 </div>
 
 <style>
+	/* Page layout */
 	.page {
 		min-height: 100vh;
 		display: grid;
@@ -61,9 +62,15 @@
 			linear-gradient(180deg, #f7fbff 0%, #f3f7ff 40%, #f6fff9 100%);
 	}
 
-	.shell { width: 100%; max-width: 440px; }
+	.shell {
+		width: 100%;
+		max-width: 440px;
+	}
 
-	.header { margin-bottom: 14px; text-align: center; }
+	.header {
+		margin-bottom: 14px;
+		text-align: center;
+	}
 
 	.title {
 		margin: 0;
@@ -81,9 +88,10 @@
 		color: rgba(15, 23, 42, 0.7);
 	}
 
+	/* Tabs */
 	.tabs {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(3, 1fr);
 		gap: 6px;
 		padding: 6px;
 		border-radius: 999px;
@@ -107,12 +115,23 @@
 		font-size: 13px;
 		color: rgba(15, 23, 42, 0.68);
 		cursor: pointer;
-		transition: transform 120ms ease, background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+		transition: transform 120ms ease, background-color 160ms ease, color 160ms ease,
+			box-shadow 160ms ease;
 	}
 
-	.tabBtn:hover { color: rgba(15, 23, 42, 0.92); background: rgba(15, 23, 42, 0.04); }
-	.tabBtn:active { transform: translateY(1px); }
-	.tabBtn:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25); }
+	.tabBtn:hover {
+		color: rgba(15, 23, 42, 0.92);
+		background: rgba(15, 23, 42, 0.04);
+	}
+
+	.tabBtn:active {
+		transform: translateY(1px);
+	}
+
+	.tabBtn:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+	}
 
 	.tabActive {
 		background: #ffffff;
@@ -122,6 +141,7 @@
 			inset 0 1px 0 rgba(255, 255, 255, 0.9);
 	}
 
+	/* Card wrapper */
 	.cardWrap {
 		border-radius: 20px;
 		background: rgba(255, 255, 255, 0.9);
@@ -130,10 +150,32 @@
 		padding: 14px;
 	}
 
-	.footer { margin-top: 14px; text-align: center; }
-	.footerText { color: rgba(15, 23, 42, 0.55); }
+	/* Footer */
+	.footer {
+		margin-top: 14px;
+		text-align: center;
+	}
 
+	.footerText {
+		color: rgba(15, 23, 42, 0.55);
+	}
+
+	/* Keep your existing utility classes available if used elsewhere */
+	.student-font-size-login {
+		font-size: 30px;
+		font-weight: 500;
+		color: #000;
+	}
+
+	.student-font-size-description {
+		font-size: 15px;
+	}
+
+	/* Responsive: make tabs wrap nicely on small screens */
 	@media (max-width: 420px) {
-		.tabs { grid-template-columns: repeat(2, 1fr); border-radius: 18px; }
+		.tabs {
+			grid-template-columns: repeat(2, 1fr);
+			border-radius: 18px;
+		}
 	}
 </style>

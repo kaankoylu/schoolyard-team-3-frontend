@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { get } from 'svelte/store';
+	import { showAlert } from '$lib/utils/alert';
 
 	type ScreenData = {
 		className: string;
@@ -42,7 +43,7 @@
 		if (!data?.code) return;
 		try {
 			await navigator.clipboard.writeText(data.code);
-			alert('Code gekopieerd!');
+			showAlert('Code gekopieerd', 'success', 3000);
 		} catch {
 			prompt('Kopieer de code:', data.code);
 		}
@@ -68,13 +69,13 @@
 	}
 
 	onMount(() => {
-		// ✅ FIX: generator stores in localStorage, so read that first
+		// Prefer sessionStorage, but allow localStorage fallback
 		data =
-			safeParse(localStorage.getItem('code_screen_data')) ||
 			safeParse(sessionStorage.getItem('code_screen_data')) ||
+			safeParse(localStorage.getItem('code_screen_data')) ||
 			null;
 
-		// fallback from query params (optional)
+		// fallback from query params (if opened via URL)
 		if (!data) {
 			const p = get(page).url.searchParams;
 			const className = p.get('className');
@@ -96,7 +97,7 @@
 	<div class="wrap">
 		<div class="card">
 			<h1 class="title">Geen code data gevonden</h1>
-			<p class="muted">Open dit scherm via “Code maken” (Docenten dashboard).</p>
+			<p class="muted">Open dit scherm via “Genereer code” (Docenten dashboard).</p>
 			<a class="btn secondary" href="/dashboard/teacher">← Terug</a>
 		</div>
 	</div>
@@ -106,7 +107,6 @@
 			<div class="header">
 				<div>
 					<div class="title">Klas: {data.className}</div>
-					<div class="muted">Geef deze code aan leerlingen</div>
 				</div>
 				<div class:badge={true} class:expiredBadge={expired}>
 					{expired ? 'Verlopen' : 'Actief'}
@@ -137,7 +137,7 @@
 						<li>Kies <strong>Student</strong></li>
 						<li>Vul je <strong>naam</strong> in</li>
 						<li>Vul deze <strong>code</strong> in</li>
-						<li>Klik op <strong>Login</strong> 🚀</li>
+						<li>Klik op <strong>Let’s go!</strong> 🚀</li>
 					</ol>
 					<p class="tiny">Tip: hoofdletters tellen.</p>
 				</div>
@@ -233,7 +233,6 @@
 		letter-spacing: 0.18em;
 		font-weight: 1000;
 		color: #0f172a;
-		overflow-wrap: anywhere;
 	}
 
 	.timer {
@@ -259,10 +258,6 @@
 		padding: 10px 14px;
 		font-weight: 900;
 		cursor: pointer;
-		text-decoration: none;
-		display: inline-flex;
-		align-items: center;
-		justify-content: center;
 	}
 
 	.primary {

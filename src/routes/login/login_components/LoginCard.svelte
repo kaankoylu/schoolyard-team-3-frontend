@@ -2,14 +2,13 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 
-	export let mode: 'teacher' | 'student' | 'admin' | 'register';
+	export let mode: 'teacher' | 'student' | 'register';
 
 	// ---------- local "accounts" ----------
 	type LocalAccount = {
 		id: string;
-		role: 'teacher' | 'admin';
+		role: 'teacher';
 		name: string;
-    
 		email: string;
 		created_at: number;
 	};
@@ -32,12 +31,12 @@
 
 	// ---------- sessions ----------
 	type StudentSession = {
-	class_id: number;
-	student_name: string;
-	session_id: string; 
-	code: string;
-	created_at: number;
-};
+		class_id: number;
+		student_name: string;
+		session_id: string;
+		code: string;
+		created_at: number;
+	};
 
 	type TeacherSession = {
 		teacher_name: string;
@@ -46,15 +45,8 @@
 		created_at: number;
 	};
 
-	type AdminSession = {
-		admin_name: string;
-		email?: string;
-		created_at: number;
-	};
-
 	const STUDENT_KEY = 'student_session';
 	const TEACHER_KEY = 'teacher_session';
-	const ADMIN_KEY = 'admin_session';
 
 	function now() {
 		return Date.now();
@@ -69,7 +61,7 @@
 	let email = '';
 	let class_id: number | '' = ''; // teacher optional only
 	let code = ''; // student required
-	let roleForRegister: 'teacher' | 'admin' = 'teacher';
+	let roleForRegister: 'teacher' = 'teacher';
 
 	let msg = '';
 	let err = '';
@@ -77,11 +69,9 @@
 
 	let verifyingCode = false;
 
-	// ✅ set these to your real routes
 	const ROUTES = {
 		student: '/dashboard/student',
-		teacher: '/dashboard/teacher',
-		admin: '/dashboard/admin'
+		teacher: '/dashboard/teacher'
 	};
 
 	onMount(() => {
@@ -106,15 +96,6 @@
 					if (s?.class_id) class_id = Number(s.class_id);
 				}
 			}
-
-			if (mode === 'admin') {
-				const raw = localStorage.getItem(ADMIN_KEY);
-				if (raw) {
-					const s = JSON.parse(raw);
-					if (s?.admin_name) name = String(s.admin_name);
-					if (s?.email) email = String(s.email);
-				}
-			}
 		} catch {
 			// ignore
 		}
@@ -129,12 +110,10 @@
 		clearMessages();
 		if (mode === 'student') localStorage.removeItem(STUDENT_KEY);
 		if (mode === 'teacher') localStorage.removeItem(TEACHER_KEY);
-		if (mode === 'admin') localStorage.removeItem(ADMIN_KEY);
 		msg = 'Cleared local session.';
 	}
 
-	// ✅ backend lookup: code -> class_id
-	// IMPORTANT: change endpoint if yours is different
+	// (kept if you still use it elsewhere)
 	async function resolveClassIdByCode(codeStr: string): Promise<number> {
 		const url = new URL('/api/class-codes/resolve', window.location.origin);
 		url.searchParams.set('code', codeStr);
@@ -157,58 +136,56 @@
 	}
 
 	async function loginStudent() {
-	clearMessages();
+		clearMessages();
 
-	const n = name.trim();
-	const c = code.trim();
+		const n = name.trim();
+		const c = code.trim();
 
-	if (!n) return (err = 'Enter student name.');
-	if (!c) return (err = 'Enter class code.');
+		if (!n) return (err = 'Enter student name.');
+		if (!c) return (err = 'Enter class code.');
 
-	verifyingCode = true;
+		verifyingCode = true;
 
-	try {
-		const res = await fetch('/api/student-session', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Accept: 'application/json'
-			},
-			body: JSON.stringify({
-				student_name: n,
-				code: c
-			})
-		});
+		try {
+			const res = await fetch('/api/student-session', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({
+					student_name: n,
+					code: c
+				})
+			});
 
-		if (!res.ok) {
-			const body = await res.json();
-			throw new Error(body?.message ?? 'Invalid or expired code.');
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				throw new Error(body?.message ?? 'Invalid or expired code.');
+			}
+
+			const data = await res.json();
+
+			const sessionId =
+				crypto.randomUUID?.() ??
+				`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+			const s: StudentSession = {
+				student_name: data.student_name,
+				class_id: data.class_id,
+				session_id: sessionId,
+				code: c,
+				created_at: now()
+			};
+
+			localStorage.setItem(STUDENT_KEY, JSON.stringify(s));
+			goto(ROUTES.student);
+		} catch (e: any) {
+			err = e?.message ?? 'Login failed.';
+		} finally {
+			verifyingCode = false;
 		}
-
-		const data = await res.json();
-
-		// ✅ generate UNIQUE session id per student
-		const sessionId =
-			crypto.randomUUID?.() ??
-			`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-
-		const s: StudentSession = {
-			student_name: data.student_name,
-			class_id: data.class_id,
-			session_id: sessionId, // ✅ THIS FIXES LIKES
-			code: c,
-			created_at: now()
-		};
-
-		localStorage.setItem(STUDENT_KEY, JSON.stringify(s));
-		goto(ROUTES.student);
-	} catch (e: any) {
-		err = e?.message ?? 'Login failed.';
-	} finally {
-		verifyingCode = false;
 	}
-}
-
 
 	function loginTeacher() {
 		clearMessages();
@@ -220,7 +197,8 @@
 		if (e) {
 			const exists = accounts.find((a) => a.role === 'teacher' && a.email.toLowerCase() === e);
 			if (!exists) {
-				return (err = 'This teacher email is not in local accounts. Create it in "Create account" (or leave email empty).');
+				return (err =
+					'This teacher email is not in local accounts. Create it in "Create account" (or leave email empty).');
 			}
 		}
 
@@ -235,30 +213,6 @@
 		goto(ROUTES.teacher);
 	}
 
-	function loginAdmin() {
-		clearMessages();
-
-		const n = name.trim();
-		if (!n) return (err = 'Enter admin name.');
-
-		const e = email.trim().toLowerCase();
-		if (e) {
-			const exists = accounts.find((a) => a.role === 'admin' && a.email.toLowerCase() === e);
-			if (!exists) {
-				return (err = 'This admin email is not in local accounts. Create it in "Create account" (or leave email empty).');
-			}
-		}
-
-		const s: AdminSession = {
-			admin_name: n,
-			email: e ? e : undefined,
-			created_at: now()
-		};
-
-		localStorage.setItem(ADMIN_KEY, JSON.stringify(s));
-		goto(ROUTES.admin);
-	}
-
 	function registerLocalAccount() {
 		clearMessages();
 
@@ -269,12 +223,12 @@
 		if (!e || !e.includes('@')) return (err = 'Enter a valid email.');
 
 		const current = readAccounts();
-		const exists = current.some((a) => a.role === roleForRegister && a.email.toLowerCase() === e);
+		const exists = current.some((a) => a.role === 'teacher' && a.email.toLowerCase() === e);
 		if (exists) return (err = 'This email already exists for that role.');
 
 		const acc: LocalAccount = {
 			id: makeId(),
-			role: roleForRegister,
+			role: 'teacher',
 			name: n,
 			email: e,
 			created_at: now()
@@ -284,7 +238,7 @@
 		writeAccounts(next);
 		accounts = next;
 
-		msg = `Local ${roleForRegister} account created. Now login on the ${roleForRegister} tab (email optional).`;
+		msg = `Local teacher account created. Now login on the teacher tab (email optional).`;
 	}
 
 	function removeLocalAccount(id: string) {
@@ -320,13 +274,14 @@
 				<button class="btn" type="button" on:click={loginStudent} disabled={verifyingCode}>
 					{verifyingCode ? 'Checking…' : 'Login'}
 				</button>
-				<button class="btn ghost" type="button" on:click={logout} disabled={verifyingCode}>Clear</button>
+				<button class="btn ghost" type="button" on:click={logout} disabled={verifyingCode}>
+					Clear
+				</button>
 			</div>
 		</div>
 
 	{:else if mode === 'teacher'}
 		<h2 class="h">Teacher login</h2>
-		<p class="p">Local only. Email check is optional.</p>
 
 		<div class="grid">
 			<label class="field">
@@ -335,38 +290,12 @@
 			</label>
 
 			<label class="field">
-				<span>Email (optional)</span>
+				<span>Email</span>
 				<input class="input" bind:value={email} placeholder="teacher@example.com" autocomplete="email" />
-			</label>
-
-			<label class="field">
-				<span>Class (optional)</span>
-				<input class="input" type="number" min="1" step="1" bind:value={class_id} placeholder="e.g. 2" inputmode="numeric" />
 			</label>
 
 			<div class="actions">
 				<button class="btn" type="button" on:click={loginTeacher}>Login</button>
-				<button class="btn ghost" type="button" on:click={logout}>Clear</button>
-			</div>
-		</div>
-
-	{:else if mode === 'admin'}
-		<h2 class="h">Admin login</h2>
-		<p class="p">Local only. Email check is optional.</p>
-
-		<div class="grid">
-			<label class="field">
-				<span>Name</span>
-				<input class="input" bind:value={name} placeholder="e.g. Admin" autocomplete="name" />
-			</label>
-
-			<label class="field">
-				<span>Email (optional)</span>
-				<input class="input" bind:value={email} placeholder="admin@example.com" autocomplete="email" />
-			</label>
-
-			<div class="actions">
-				<button class="btn" type="button" on:click={loginAdmin}>Login</button>
 				<button class="btn ghost" type="button" on:click={logout}>Clear</button>
 			</div>
 		</div>
@@ -378,9 +307,8 @@
 		<div class="grid">
 			<label class="field">
 				<span>Role</span>
-				<select class="input" bind:value={roleForRegister}>
+				<select class="input" bind:value={roleForRegister} disabled>
 					<option value="teacher">Teacher</option>
-					<option value="admin">Admin</option>
 				</select>
 			</label>
 
@@ -396,23 +324,6 @@
 
 			<div class="actions">
 				<button class="btn" type="button" on:click={registerLocalAccount}>Create</button>
-			</div>
-
-			<div class="list">
-				<div class="listTitle">Local accounts</div>
-				{#if accounts.length === 0}
-					<div class="empty">No accounts yet.</div>
-				{:else}
-					{#each accounts as a (a.id)}
-						<div class="row">
-							<div class="rowMain">
-								<div class="rowTop">{a.name} <span class="tag">{a.role}</span></div>
-								<div class="rowSub">{a.email}</div>
-							</div>
-							<button class="miniDanger" type="button" on:click={() => removeLocalAccount(a.id)}>Delete</button>
-						</div>
-					{/each}
-				{/if}
 			</div>
 		</div>
 	{/if}
