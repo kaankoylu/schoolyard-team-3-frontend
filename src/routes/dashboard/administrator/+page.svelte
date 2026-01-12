@@ -21,45 +21,45 @@
 	</div>
 	<div class="w-full grid grid-cols-2 gird-columns-2 p-6 gap-6">
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
 		title="Student Feedback" 
-		buttonName="to Student feedback" 
+		buttonName="Naar student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
-		title="Print Layout" 
-		buttonName="to Student feedback" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
+		title="Layout uitprinten" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
-		title="Student Designs" 
-		buttonName="to Student feedback" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
+		title="Student ontwerp" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
 		title="Wiki" 
-		buttonName="to Student feedback" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
-		title="Manage Assets" 
-		buttonName="to Student feedback" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
+		title="Assets bewerken" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
-		title="Manage Layouts" 
-		buttonName="to Student feedback" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen" 
+		title="Layouts bewerken" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 		<DashboardNavigationCard 
-		description="View the student's feedback on assets and designs" 
-		title="Manage Classes" 
-		buttonName="to Student feedback" 
+		description="Bekijk de studenten hun feedback op de assets en ontwerpen"
+		title="Klassen bewerken" 
+		buttonName="Naar Student feedback" 
 		href="fcgv"
 		/>
 	</div>

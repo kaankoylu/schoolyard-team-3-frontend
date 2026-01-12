@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { showAlert } from '$lib/utils/alert';
 
-	const API_BASE = 'http://localhost';
+	// ✅ same-origin, uses Vite proxy (/api -> Laravel)
+	const API_BASE = '';
 
 	type PlacedAsset = {
 		instanceId?: number;
@@ -36,14 +37,10 @@
 		background_image?: string | null;
 		created_at?: string;
 
-		// student info
 		class_id?: number | null;
 		student_name?: string | null;
-
-		// optional if you still return it
 		class_code?: string | null;
 
-		// relation from backend (could be snake_case or camelCase)
 		schoolClass?: { id?: number; name?: string } | null;
 		school_class?: { id?: number; name?: string } | null;
 
@@ -51,6 +48,11 @@
 		placed_assets?: PlacedAsset[];
 
 		feedback?: string | null;
+
+		// ✅ add inferred values (frontend only)
+		_inferredClassId?: number | null;
+		_inferredClassName?: string | null;
+
 		[key: string]: any;
 	};
 
@@ -58,33 +60,69 @@
 	let loading = true;
 	let error = '';
 
-	// classes for filter
 	let classes: SchoolClass[] = [];
 	let classesLoading = true;
-	let selectedClassId: number | 'all' = 'all';
 
-	// simple feedback state (per design)
+	// ⚠️ select gives strings, so keep it as string union
+	let selectedClassId: 'all' | string = 'all';
+
 	let feedbackByDesign: Record<number, string> = {};
 	let savingFor: number | null = null;
 
+	// quick lookup maps
+	$: classById = new Map<number, SchoolClass>(classes.map((c) => [Number(c.id), c]));
+	$: classByCode = new Map<string, SchoolClass>(
+		classes
+			.map((c) => {
+				const code = (c.active_code?.code ?? c.activeCode?.code ?? '').trim();
+				return code ? ([code.toUpperCase(), c] as const) : null;
+			})
+			.filter(Boolean) as Array<readonly [string, SchoolClass]>
+	);
+
 	onMount(async () => {
-		await Promise.all([loadClasses(), loadDesigns()]);
+		// load classes first, then designs so we can infer class from class_code
+		await loadClasses();
+		await loadDesigns();
 	});
 
 	async function loadClasses() {
 		classesLoading = true;
 		try {
-			const res = await fetch(`${API_BASE}/api/classes`);
-			if (!res.ok) throw new Error(`Failed to load classes (${res.status})`);
+			const res = await fetch(`${API_BASE}/api/classes`, {
+				headers: { Accept: 'application/json' }
+			});
+			if (!res.ok) throw new Error(`Kan klassen niet laden (${res.status})`);
 			const data = await res.json();
 			classes = Array.isArray(data) ? data : [];
 		} catch (e: any) {
 			console.error(e);
-			// don’t block overview if classes fail
 			classes = [];
 		} finally {
 			classesLoading = false;
 		}
+	}
+
+	function inferClassForDesign(d: Design): { id: number | null; name: string | null } {
+		// 1) already has relation
+		const relName = d.schoolClass?.name ?? d.school_class?.name ?? null;
+		const relId = d.schoolClass?.id ?? d.school_class?.id ?? null;
+		if (relId || relName) return { id: relId ? Number(relId) : null, name: relName };
+
+		// 2) has class_id
+		if (d.class_id) {
+			const cls = classById.get(Number(d.class_id));
+			return { id: Number(d.class_id), name: cls?.name ?? `Klas #${Number(d.class_id)}` };
+		}
+
+		// 3) fallback: match class_code to active_code.code
+		const code = (d.class_code ?? '').trim();
+		if (code) {
+			const cls = classByCode.get(code.toUpperCase());
+			if (cls) return { id: Number(cls.id), name: cls.name };
+		}
+
+		return { id: null, name: '—' };
 	}
 
 	async function loadDesigns() {
@@ -92,92 +130,97 @@
 		error = '';
 
 		try {
-			const res = await fetch(`${API_BASE}/api/designs`);
-			if (!res.ok) throw new Error(`Failed to load designs (${res.status})`);
+			const res = await fetch(`${API_BASE}/api/designs`, {
+				headers: { Accept: 'application/json' }
+			});
+			if (!res.ok) throw new Error(`Kan ontwerpen niet laden (${res.status})`);
 
 			const data = await res.json();
-			const raw = Array.isArray(data) ? data : data.data ?? [];
+			const raw = Array.isArray(data) ? data : (data.data ?? []);
 
-			// normalize placedAssets + feedback + background field
-			designs = raw.map((d: Design) => ({
-				...d,
-				backgroundImage: d.backgroundImage ?? d.background_image ?? null,
-				placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
-				feedback: d.feedback ?? null
-			}));
+			designs = raw.map((d: Design) => {
+				const inferred = inferClassForDesign(d);
 
-			// preload existing feedback
+				return {
+					...d,
+					backgroundImage: d.backgroundImage ?? d.background_image ?? null,
+					placedAssets: (d.placedAssets ?? d.placed_assets ?? []) as PlacedAsset[],
+					feedback: d.feedback ?? null,
+					_inferredClassId: inferred.id,
+					_inferredClassName: inferred.name
+				};
+			});
+
 			feedbackByDesign = designs.reduce<Record<number, string>>((acc, d) => {
 				acc[d.id] = d.feedback ?? '';
 				return acc;
 			}, {});
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Could not load designs.';
+			error = e?.message ?? 'Kan ontwerpen niet laden';
 		} finally {
 			loading = false;
 		}
 	}
 
 	function getClassName(design: Design) {
-		return (
-			design.schoolClass?.name ??
-			design.school_class?.name ??
-			(design.class_id ? `Class #${design.class_id}` : '—')
-		);
+		return design._inferredClassName ?? '—';
+	}
+
+	function getClassId(design: Design) {
+		return design._inferredClassId ?? null;
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
 		const map = new Map<string, number>();
-
 		for (const item of items) {
 			const label = item.label ?? item.asset?.label ?? 'Unknown';
 			map.set(label, (map.get(label) ?? 0) + 1);
 		}
-
 		return Array.from(map.entries()).map(([label, count]) => ({ label, count }));
 	}
 
-	// filtered list
+	// ✅ filter uses inferred class id too
 	$: filteredDesigns =
 		selectedClassId === 'all'
 			? designs
-			: designs.filter((d) => Number(d.class_id) === Number(selectedClassId));
+			: designs.filter((d) => Number(getClassId(d)) === Number(selectedClassId));
 
 	async function submitFeedback(designId: number) {
-		const text = feedbackByDesign[designId]?.trim();
-		if (!text) return;
+	const text = feedbackByDesign[designId]?.trim();
+	if (!text) return;
 
-		savingFor = designId;
+	savingFor = designId;
 
-		try {
-			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				body: JSON.stringify({ text })
-			});
+	try {
+		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json'
+			},
+			body: JSON.stringify({ text })
+		});
 
-			if (!res.ok) {
-				const body = await res.text();
-				console.error('Feedback error', res.status, body);
-				alert('Opslaan van feedback mislukt. Check de console.');
-				return;
-			}
-
-			showAlert(`Feedback opgeslagen 👍`, 'success', 3000); 
-
-			// keep local copy in sync
-			designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
-		} catch (err) {
-			console.error(err);
-			alert('Netwerkfout bij opslaan van feedback.');
-		} finally {
-			savingFor = null;
+		if (!res.ok) {
+			const body = await res.text();
+			console.error('Feedback error', res.status, body);
+			alert('Opslaan van feedback mislukt. Check de console.');
+			return;
 		}
+
+		showAlert('Feedback opgeslagen 👍', 'success', 3000);
+
+		// keep local copy in sync
+		designs = designs.map((d) => (d.id === designId ? { ...d, feedback: text } : d));
+	} catch (err) {
+		console.error(err);
+		alert('Netwerkfout bij opslaan van feedback.');
+	} finally {
+		savingFor = null;
 	}
+}
+
 
 	function shortDate(date?: string) {
 		if (!date) return '';
@@ -189,29 +232,31 @@
 	<div class="container">
 		<header class="topbar">
 			<div class="topbarLeft">
-				<h1 class="title">Student designs</h1>
-				<p class="subtitle">Overview of all saved layouts. Leave quick, kid-friendly feedback.</p>
+				<h1 class="title">Studenten ontwerpen</h1>
+				<p class="subtitle">
+					Overzicht van alle opgeslagen ontwerpen, laat snelle kind vriendelijke feedback achter.
+				</p>
 
 				<!-- ✅ FILTER BAR -->
 				<div class="filters">
-					<label class="filterLabel" for="classFilter">Filter class</label>
+					<label class="filterLabel" for="classFilter">Filter door klassen</label>
 					<select
 						id="classFilter"
 						class="select"
 						bind:value={selectedClassId}
 						disabled={classesLoading || classes.length === 0}
 					>
-						<option value="all">All classes</option>
+						<option value="all">Alle klassen</option>
 						{#each classes as cls}
 							<option value={cls.id}>{cls.name}</option>
 						{/each}
 					</select>
 
-					<span class="countPill">{filteredDesigns.length} shown</span>
+					<span class="countPill">{filteredDesigns.length} Laat zien</span>
 				</div>
 			</div>
 
-			<a href="/dashboard/teacher" class="backlink">← Back to teacher dashboard</a>
+			<a href="/dashboard/teacher" class="backlink">← Terug naar docenten dashboard</a>
 		</header>
 
 		{#if loading}
@@ -224,12 +269,13 @@
 			<div class="state error">{error}</div>
 		{:else if filteredDesigns.length === 0}
 			<div class="state empty">
-				<div class="emptyTitle">No designs yet</div>
+				<div class="emptyTitle">Er zijn nog geen ontwerpen</div>
 				<div class="emptyText">
 					{#if selectedClassId === 'all'}
-						Ask students to save their design first. It will show up here automatically.
+						Vraag de studenten om hun ontwerpen op te slaan, vervolgens kun jij ze automatisch hier
+						bekijken.
 					{:else}
-						No designs found for this class yet.
+						Er zijn nog geen ontwerpen voor deze klas.
 					{/if}
 				</div>
 			</div>
@@ -273,7 +319,7 @@
 								<div class="badges">
 									<span class="badge">#{design.id}</span>
 									{#if design.feedback}
-										<span class="badge ok">Feedback ✔</span>
+										<span class="badge ok">Feedback	 ✔</span>
 									{/if}
 								</div>
 							</div>
@@ -281,11 +327,26 @@
 
 						<div class="content">
 							<div class="row">
-								<h2 class="cardTitle">Design #{design.id}</h2>
+								<h2 class="cardTitle">{design.student_name}'s Ontwerp #{design.id}</h2>
 								{#if design.created_at}
 									<span class="date">{shortDate(design.created_at)}</span>
 								{/if}
 							</div>
+							{#if design.grade !== null && design.grade !== undefined}
+								<div class="ratingRow" aria-label={`Beoordeling: ${design.grade}/5`}>
+									{#each [1, 2, 3, 4, 5] as s}
+										<span class="starMini" class:filled={(design.grade ?? 0) >= s}>★</span>
+									{/each}
+									<span class="gradeText">{design.grade}/5</span>
+								</div>
+							{:else}
+								<div class="ratingRow muted" aria-label="Nog niet beoordeeld">
+									{#each [1, 2, 3, 4, 5] as _}
+										<span class="starMini">★</span>
+									{/each}
+									<span class="gradeText">—</span>
+								</div>
+							{/if}
 
 							<!-- meta -->
 							<div class="meta">
@@ -294,7 +355,7 @@
 								{/if}
 
 								<!-- ✅ show class NAME -->
-								<div><span class="metaKey">Class</span> {getClassName(design)}</div>
+								<div><span class="metaKey">Klas</span> {getClassName(design)}</div>
 
 								{#if design.student_name}
 									<div><span class="metaKey">Student</span> {design.student_name}</div>
@@ -315,14 +376,14 @@
 
 							<!-- feedback -->
 							<div class="feedback">
-								<label class="label">Teacher feedback</label>
+								<label class="label">Feedback van docent</label>
 								<textarea
 									class="textarea"
 									rows="3"
 									bind:value={feedbackByDesign[design.id]}
 									placeholder="Write short, kid-friendly feedback…"
 								></textarea>
-								<div class="hint">Keep it short: 1–2 sentences is enough.</div>
+								<div class="hint">Hou het kort, 1 a 2 zinnen is genoeg.</div>
 							</div>
 
 							<div class="actions">
@@ -335,7 +396,7 @@
 								</button>
 
 								<a href={`/dashboard/teacher/overview/${design.id}`} class="link">
-									Open design →
+									Open ontwerp →
 								</a>
 							</div>
 						</div>
@@ -351,9 +412,14 @@
 		min-height: 100vh;
 		padding: 28px 16px 44px;
 		background:
-			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
-			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
+			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
+			linear-gradient(
+				180deg,
+				rgba(241, 245, 249, 0.65) 0%,
+				rgba(248, 250, 252, 1) 55%,
+				rgba(241, 245, 249, 0.7) 100%
+			);
 	}
 
 	.container {
@@ -430,7 +496,7 @@
 		font-weight: 900;
 		color: rgba(15, 23, 42, 0.72);
 		background: rgba(255, 255, 255, 0.82);
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 	}
 
 	.backlink {
@@ -439,11 +505,13 @@
 		text-decoration: none;
 		padding: 8px 10px;
 		border-radius: 10px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.6);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease;
 	}
 	.backlink:hover {
 		background: rgba(255, 255, 255, 0.9);
@@ -477,15 +545,17 @@
 		flex-direction: column;
 		overflow: hidden;
 		border-radius: 18px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.92);
 		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		transition: transform 140ms ease, box-shadow 160ms ease;
+		transition:
+			transform 140ms ease,
+			box-shadow 160ms ease;
 	}
 
 	.card:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+		box-shadow: 0 18px 50px rgba(15, 23, 42, 0.1);
 	}
 
 	.preview {
@@ -506,7 +576,7 @@
 		inset: 0;
 		background:
 			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.12) 100%),
-			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.20), transparent 60%),
+			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.2), transparent 60%),
 			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.14), transparent 55%);
 	}
 
@@ -546,7 +616,7 @@
 		font-weight: 900;
 		color: rgba(15, 23, 42, 0.78);
 		background: rgba(255, 255, 255, 0.82);
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
 	}
@@ -592,7 +662,7 @@
 
 	.metaKey {
 		font-weight: 900;
-		color: rgba(15, 23, 42, 0.70);
+		color: rgba(15, 23, 42, 0.7);
 		margin-right: 6px;
 	}
 
@@ -609,7 +679,7 @@
 		padding: 4px 10px;
 		font-size: 11px;
 		font-weight: 900;
-		background: rgba(16, 185, 129, 0.10);
+		background: rgba(16, 185, 129, 0.1);
 		color: rgba(4, 120, 87, 1);
 		border: 1px solid rgba(16, 185, 129, 0.22);
 	}
@@ -634,17 +704,19 @@
 		font-size: 12px;
 		line-height: 1.4;
 		background: rgba(255, 255, 255, 0.92);
-		transition: border-color 140ms ease, box-shadow 140ms ease;
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease;
 	}
 	.textarea:focus {
 		outline: none;
 		border-color: rgba(16, 185, 129, 0.45);
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 	}
 
 	.hint {
 		font-size: 11px;
-		color: rgba(15, 23, 42, 0.50);
+		color: rgba(15, 23, 42, 0.5);
 	}
 
 	.actions {
@@ -667,7 +739,10 @@
 		font-size: 12px;
 		font-weight: 900;
 		cursor: pointer;
-		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
+		transition:
+			transform 120ms ease,
+			filter 160ms ease,
+			box-shadow 160ms ease;
 		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
 	}
 	.btnPrimary:hover {
@@ -711,7 +786,7 @@
 	}
 	.state.empty {
 		border-style: solid;
-		border-color: rgba(15, 23, 42, 0.10);
+		border-color: rgba(15, 23, 42, 0.1);
 	}
 	.emptyTitle {
 		font-weight: 900;
@@ -728,7 +803,7 @@
 		background: linear-gradient(
 			90deg,
 			rgba(15, 23, 42, 0.06),
-			rgba(15, 23, 42, 0.10),
+			rgba(15, 23, 42, 0.1),
 			rgba(15, 23, 42, 0.06)
 		);
 		background-size: 200% 100%;

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 
 describe("Math tests", () => {
   it("adds numbers correctly", () => {
-    expect(1 + 2).toBe(2);
+    expect(2 + 2).toBe(4);
   });
 
   it("multiplies numbers correctly", () => {

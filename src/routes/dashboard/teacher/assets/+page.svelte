@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 
-	const API_BASE = 'http://localhost';
-	const ASSET_BASE = API_BASE;
+	const API_BASE = '';
+	const ASSET_BASE = '';
 
 	type Asset = {
 		id: number;
@@ -72,12 +72,13 @@
 
 		try {
 			const res = await fetch(`${API_BASE}/api/assets`);
-			if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
+			if (!res.ok)
+				throw new Error(`Er is een fout opgetreden met het laden van de assets (${res.status})`);
 			const data = await res.json();
-			assets = Array.isArray(data) ? data : data.data ?? [];
+			assets = Array.isArray(data) ? data : (data.data ?? []);
 		} catch (e: any) {
 			console.error(e);
-			error = e?.message ?? 'Could not load assets.';
+			error = e?.message ?? 'Er is een fout opgetreden met het laden van de assets';
 		} finally {
 			loading = false;
 		}
@@ -93,8 +94,8 @@
 
 	async function createAsset() {
 		if (!newLabel.trim()) return alert('Label is required.');
-		if (!newImageFile) return alert('Choose an image.');
-		if (newWidth <= 0 || newHeight <= 0) return alert('Choose a valid grid size.');
+		if (!newImageFile) return alert('Kies een afbeelding.');
+		if (newWidth <= 0 || newHeight <= 0) return alert('Kies een passende grid groote');
 
 		creating = true;
 
@@ -113,7 +114,7 @@
 			});
 
 			if (!res.ok) {
-				console.error('Create asset error:', res.status, await res.text());
+				console.error('Asset aanmaken error:', res.status, await res.text());
 				alert('Aanmaken van asset mislukt. Check de console.');
 				return;
 			}
@@ -167,7 +168,12 @@
 	}
 
 	async function deleteAsset(asset: Asset) {
-		if (!confirm(`Weet je zeker dat je "${asset.label}" wilt verwijderen? Dit kan niet ongedaan worden.`)) return;
+		if (
+			!confirm(
+				`Weet je zeker dat je "${asset.label}" wilt verwijderen? Dit kan niet ongedaan worden.`
+			)
+		)
+			return;
 
 		deletingId = asset.id;
 
@@ -283,23 +289,23 @@
 	<div class="container">
 		<header class="topbar">
 			<div>
-				<h1 class="title">Asset Overview</h1>
-				<p class="subtitle">Upload new objects and manage what students can use.</p>
+				<h1 class="title">Asset overzicht</h1>
+				<p class="subtitle">Nieuwe assets toevoegen een toegankelijkheid aanpassen</p>
 			</div>
 
-			<a href="/dashboard/teacher" class="backlink">← Back</a>
+			<a href="/dashboard/teacher" class="backlink">← Terug</a>
 		</header>
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Add Asset</h2>
-				<p class="cardHint">Pick a size on the grid, then upload an image.</p>
+				<h2 class="cardTitle">Asset overzicht</h2>
+				<p class="cardHint">Kies een grote op het grid en upload dan een foto</p>
 			</div>
 
 			<div class="createLayout">
 				<div class="gridPicker">
 					<div class="gridMeta">
-						<span class="gridLabel">Size</span>
+						<span class="gridLabel">Grote</span>
 						<span class="gridValue">{newWidth} × {newHeight}</span>
 					</div>
 
@@ -336,14 +342,14 @@
 					</div>
 
 					<div class="field">
-						<label class="label">Image</label>
+						<label class="label">Foto</label>
 						<input type="file" accept="image/*" class="file" on:change={handleFileChange} />
 						{#if newImagePreview}
 							<div class="thumbRow">
 								<img src={newImagePreview} class="thumb" alt="Selected image preview" />
 								<div class="thumbMeta">
-									<div class="thumbTitle">Preview</div>
-									<div class="thumbSub">This is how it’ll look in the toolbox.</div>
+									<div class="thumbTitle">Overzicht</div>
+									<div class="thumbSub">Zo zal het eruit zien in de applicatie</div>
 								</div>
 							</div>
 						{/if}
@@ -351,19 +357,19 @@
 
 					<div class="fieldRow">
 						<div class="field">
-							<label class="label">Width</label>
+							<label class="label">Breedte</label>
 							<input class="input" readonly bind:value={newWidth} />
 						</div>
 
 						<div class="field">
-							<label class="label">Height</label>
+							<label class="label">Hoogte</label>
 							<input class="input" readonly bind:value={newHeight} />
 						</div>
 					</div>
 
 					<label class="toggle">
 						<input type="checkbox" bind:checked={newIsAvailable} />
-						<span class="toggleText">Available for students</span>
+						<span class="toggleText">Beschikbaar voor studenten</span>
 					</label>
 
 					<div class="actions">
@@ -377,8 +383,8 @@
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Existing Assets</h2>
-				<p class="cardHint">Hide/show, edit, or delete assets.</p>
+				<h2 class="cardTitle">Bestaande Assets</h2>
+				<p class="cardHint">Verberg/laat zien, bewerk, of verwijder assets.</p>
 			</div>
 
 			{#if loading}
@@ -390,16 +396,16 @@
 			{:else if error}
 				<div class="state error">{error}</div>
 			{:else if assets.length === 0}
-				<div class="state">No assets found.</div>
+				<div class="state">Geen assets gevonden.</div>
 			{:else}
 				<div class="tableWrap">
 					<table class="table">
 						<thead>
 							<tr>
-								<th>Preview</th>
+								<th>Overzicht</th>
 								<th>Label</th>
-								<th>Size</th>
-								<th>Available</th>
+								<th>Grote</th>
+								<th>Beschikbaar</th>
 								<th class="right"></th>
 							</tr>
 						</thead>
@@ -461,7 +467,7 @@
 		<div class="modalBackdrop" on:click|self={closeEdit}>
 			<div class="modal">
 				<div class="modalHeader">
-					<h3 class="modalTitle">Edit asset</h3>
+					<h3 class="modalTitle">Asset bewerken</h3>
 					<button class="modalClose" on:click={closeEdit}>✕</button>
 				</div>
 
@@ -473,29 +479,29 @@
 
 					<div class="fieldRow">
 						<div class="field">
-							<label class="label">Width</label>
+							<label class="label">Breedte</label>
 							<input type="number" min="1" class="input" bind:value={editWidth} />
 						</div>
 						<div class="field">
-							<label class="label">Height</label>
+							<label class="label">Hoogte</label>
 							<input type="number" min="1" class="input" bind:value={editHeight} />
 						</div>
 					</div>
 
 					<div class="field">
-						<label class="label">Image (optional new)</label>
+						<label class="label">Foto (optioneel om nieuwe op te geven)</label>
 						<input type="file" accept="image/*" class="file" on:change={handleEditFileChange} />
 
 						<div class="thumbRow" style="margin-top:10px;">
 							<div class="thumbWrap">
 								<img src={`${ASSET_BASE}${editing.image_url}`} class="thumb" alt="Current" />
-								<div class="thumbMini">Current</div>
+								<div class="thumbMini">Huidige</div>
 							</div>
 
 							{#if editImagePreview}
 								<div class="thumbWrap">
 									<img src={editImagePreview} class="thumb" alt="New preview" />
-									<div class="thumbMini">New</div>
+									<div class="thumbMini">Nieuwe</div>
 								</div>
 							{/if}
 						</div>
@@ -503,14 +509,14 @@
 
 					<label class="toggle">
 						<input type="checkbox" bind:checked={editIsAvailable} />
-						<span class="toggleText">Available for students</span>
+						<span class="toggleText">Beschikbaarheid voor studenten</span>
 					</label>
 				</div>
 
 				<div class="modalActions">
 					<button class="btnGhost" on:click={closeEdit} disabled={savingEdit}>Cancel</button>
 					<button class="btnPrimary" on:click={saveEdit} disabled={savingEdit}>
-						{savingEdit ? 'Saving…' : 'Save changes'}
+						{savingEdit ? 'Saving…' : 'Wijzigingen opslaan'}
 					</button>
 				</div>
 			</div>
@@ -524,9 +530,14 @@
 		min-height: 100vh;
 		padding: 28px 16px 44px;
 		background:
-			radial-gradient(900px 500px at 15% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
-			radial-gradient(900px 500px at 90% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+			radial-gradient(900px 500px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
+			radial-gradient(900px 500px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
+			linear-gradient(
+				180deg,
+				rgba(241, 245, 249, 0.65) 0%,
+				rgba(248, 250, 252, 1) 55%,
+				rgba(241, 245, 249, 0.7) 100%
+			);
 	}
 
 	.container {
@@ -563,13 +574,18 @@
 		text-decoration: none;
 		padding: 8px 10px;
 		border-radius: 10px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.6);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease;
 	}
-	.backlink:hover { background: rgba(255, 255, 255, 0.9); transform: translateY(-1px); }
+	.backlink:hover {
+		background: rgba(255, 255, 255, 0.9);
+		transform: translateY(-1px);
+	}
 
 	.card {
 		border-radius: 18px;
@@ -579,35 +595,78 @@
 		padding: 14px;
 	}
 
-	.cardHeader { display: grid; gap: 4px; margin-bottom: 12px; }
-	.cardTitle { margin: 0; font-size: 13px; letter-spacing: 0.02em; text-transform: uppercase; color: rgba(15, 23, 42, 0.75); font-weight: 800; }
-	.cardHint { margin: 0; font-size: 12px; color: rgba(15, 23, 42, 0.55); }
+	.cardHeader {
+		display: grid;
+		gap: 4px;
+		margin-bottom: 12px;
+	}
+	.cardTitle {
+		margin: 0;
+		font-size: 13px;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+		color: rgba(15, 23, 42, 0.75);
+		font-weight: 800;
+	}
+	.cardHint {
+		margin: 0;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
-	.createLayout { display: grid; gap: 14px; grid-template-columns: 320px 1fr; align-items: start; }
-	.gridPicker { display: grid; gap: 10px; }
-	.gridMeta { display: flex; align-items: baseline; gap: 10px; }
-	.gridLabel { font-size: 12px; color: rgba(15, 23, 42, 0.60); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-	.gridValue { font-size: 14px; font-weight: 900; color: #0f172a; }
+	.createLayout {
+		display: grid;
+		gap: 14px;
+		grid-template-columns: 320px 1fr;
+		align-items: start;
+	}
+	.gridPicker {
+		display: grid;
+		gap: 10px;
+	}
+	.gridMeta {
+		display: flex;
+		align-items: baseline;
+		gap: 10px;
+	}
+	.gridLabel {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.6);
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.gridValue {
+		font-size: 14px;
+		font-weight: 900;
+		color: #0f172a;
+	}
 
 	.gridBox {
 		position: relative;
 		display: inline-block;
 		padding: 10px;
 		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(248, 250, 252, 0.9);
 		overflow: hidden;
 	}
-	.gridRow { display: flex; }
+	.gridRow {
+		display: flex;
+	}
 	.gridCell {
-		height: 22px; width: 22px;
+		height: 22px;
+		width: 22px;
 		border: 1px solid rgba(15, 23, 42, 0.08);
 		background: rgba(255, 255, 255, 0.8);
 		cursor: pointer;
 		border-radius: 6px;
 		margin: 2px;
 	}
-	.gridCell.isSelected { background: rgba(16, 185, 129, 0.35); border-color: rgba(16, 185, 129, 0.35); }
+	.gridCell.isSelected {
+		background: rgba(16, 185, 129, 0.35);
+		border-color: rgba(16, 185, 129, 0.35);
+	}
 
 	.gridPreview {
 		position: absolute;
@@ -617,12 +676,30 @@
 		overflow: hidden;
 		border-radius: 10px;
 	}
-	.previewImg { height: 100%; width: 100%; object-fit: cover; }
+	.previewImg {
+		height: 100%;
+		width: 100%;
+		object-fit: cover;
+	}
 
-	.form { display: grid; gap: 10px; }
-	.field { display: grid; gap: 6px; }
-	.fieldRow { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; }
-	.label { font-size: 12px; font-weight: 800; color: rgba(15, 23, 42, 0.75); }
+	.form {
+		display: grid;
+		gap: 10px;
+	}
+	.field {
+		display: grid;
+		gap: 6px;
+	}
+	.fieldRow {
+		display: grid;
+		gap: 10px;
+		grid-template-columns: 1fr 1fr;
+	}
+	.label {
+		font-size: 12px;
+		font-weight: 800;
+		color: rgba(15, 23, 42, 0.75);
+	}
 
 	.input {
 		width: 100%;
@@ -633,22 +710,66 @@
 		background: rgba(255, 255, 255, 0.9);
 	}
 
-	.file { font-size: 12px; }
-
-	.mono {
-		font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+	.file {
 		font-size: 12px;
 	}
 
-	.thumbRow { display: flex; align-items: center; gap: 10px; padding: 10px; border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.08); background: rgba(248, 250, 252, 0.85); }
-	.thumbWrap { display: grid; gap: 4px; justify-items: center; }
-	.thumb { height: 54px; width: 54px; border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.10); object-fit: cover; background: #fff; }
-	.thumbMini { font-size: 10px; font-weight: 800; color: rgba(15, 23, 42, 0.6); }
+	.mono {
+		font-family:
+			ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New',
+			monospace;
+		font-size: 12px;
+	}
 
-	.toggle { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.08); background: rgba(248, 250, 252, 0.7); width: fit-content; }
-	.toggleText { font-size: 12px; font-weight: 800; color: rgba(15, 23, 42, 0.72); }
+	.thumbRow {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		background: rgba(248, 250, 252, 0.85);
+	}
+	.thumbWrap {
+		display: grid;
+		gap: 4px;
+		justify-items: center;
+	}
+	.thumb {
+		height: 54px;
+		width: 54px;
+		border-radius: 12px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		object-fit: cover;
+		background: #fff;
+	}
+	.thumbMini {
+		font-size: 10px;
+		font-weight: 800;
+		color: rgba(15, 23, 42, 0.6);
+	}
 
-	.actions { display: flex; justify-content: flex-end; margin-top: 4px; }
+	.toggle {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 10px 12px;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.08);
+		background: rgba(248, 250, 252, 0.7);
+		width: fit-content;
+	}
+	.toggleText {
+		font-size: 12px;
+		font-weight: 800;
+		color: rgba(15, 23, 42, 0.72);
+	}
+
+	.actions {
+		display: flex;
+		justify-content: flex-end;
+		margin-top: 4px;
+	}
 
 	.btnPrimary {
 		padding: 10px 14px;
@@ -660,53 +781,225 @@
 		font-weight: 900;
 		cursor: pointer;
 	}
-	.btnPrimary:disabled { opacity: 0.6; cursor: not-allowed; }
+	.btnPrimary:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
 
-	.tableWrap { overflow: auto; border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.08); }
-	.table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
-	.table thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(15, 23, 42, 0.55); background: rgba(248, 250, 252, 0.9); padding: 10px 12px; border-bottom: 1px solid rgba(15, 23, 42, 0.08); }
-	.table tbody td { padding: 10px 12px; border-bottom: 1px solid rgba(15, 23, 42, 0.06); background: rgba(255, 255, 255, 0.9); vertical-align: middle; }
+	.tableWrap {
+		overflow: auto;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.08);
+	}
+	.table {
+		width: 100%;
+		border-collapse: separate;
+		border-spacing: 0;
+		font-size: 12px;
+	}
+	.table thead th {
+		text-align: left;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		color: rgba(15, 23, 42, 0.55);
+		background: rgba(248, 250, 252, 0.9);
+		padding: 10px 12px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+	}
+	.table tbody td {
+		padding: 10px 12px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+		background: rgba(255, 255, 255, 0.9);
+		vertical-align: middle;
+	}
 
-	.right { text-align: right; white-space: nowrap; }
-	.strong { font-weight: 900; color: rgba(15, 23, 42, 0.85); }
+	.right {
+		text-align: right;
+		white-space: nowrap;
+	}
+	.strong {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.85);
+	}
 
-	.imgBox { height: 44px; width: 44px; border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.10); overflow: hidden; background: #fff; }
-	.img { height: 100%; width: 100%; object-fit: cover; }
+	.imgBox {
+		height: 44px;
+		width: 44px;
+		border-radius: 12px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		overflow: hidden;
+		background: #fff;
+	}
+	.img {
+		height: 100%;
+		width: 100%;
+		object-fit: cover;
+	}
 
-	.pill { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 900; border: 1px solid transparent; }
-	.pillOn { background: rgba(16, 185, 129, 0.10); color: rgba(4, 120, 87, 1); border-color: rgba(16, 185, 129, 0.22); }
-	.pillOff { background: rgba(15, 23, 42, 0.06); color: rgba(15, 23, 42, 0.55); border-color: rgba(15, 23, 42, 0.10); }
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		padding: 4px 10px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 900;
+		border: 1px solid transparent;
+	}
+	.pillOn {
+		background: rgba(16, 185, 129, 0.1);
+		color: rgba(4, 120, 87, 1);
+		border-color: rgba(16, 185, 129, 0.22);
+	}
+	.pillOff {
+		background: rgba(15, 23, 42, 0.06);
+		color: rgba(15, 23, 42, 0.55);
+		border-color: rgba(15, 23, 42, 0.1);
+	}
 
-	.btnGhost { padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(15, 23, 42, 0.12); background: rgba(255, 255, 255, 0.8); cursor: pointer; font-size: 12px; font-weight: 900; color: rgba(15, 23, 42, 0.75); }
-	.btnGhost:disabled { opacity: 0.6; cursor: not-allowed; }
+	.btnGhost {
+		padding: 8px 10px;
+		border-radius: 12px;
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(255, 255, 255, 0.8);
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.75);
+	}
+	.btnGhost:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
 
-	.rowActions { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; }
+	.rowActions {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		justify-content: flex-end;
+	}
 
-	.btnDanger { padding: 8px 10px; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.28); background: rgba(254, 226, 226, 0.75); cursor: pointer; font-size: 12px; font-weight: 900; color: rgba(153, 27, 27, 1); }
-	.btnDanger:disabled { opacity: 0.6; cursor: not-allowed; }
+	.btnDanger {
+		padding: 8px 10px;
+		border-radius: 12px;
+		border: 1px solid rgba(239, 68, 68, 0.28);
+		background: rgba(254, 226, 226, 0.75);
+		cursor: pointer;
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(153, 27, 27, 1);
+	}
+	.btnDanger:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
 
-	.state { padding: 12px; border-radius: 14px; border: 1px dashed rgba(15, 23, 42, 0.18); background: rgba(248, 250, 252, 0.85); display: grid; gap: 10px; }
-	.state.error { border-style: solid; border-color: rgba(239, 68, 68, 0.22); background: rgba(239, 68, 68, 0.06); color: rgba(185, 28, 28, 1); font-weight: 800; }
+	.state {
+		padding: 12px;
+		border-radius: 14px;
+		border: 1px dashed rgba(15, 23, 42, 0.18);
+		background: rgba(248, 250, 252, 0.85);
+		display: grid;
+		gap: 10px;
+	}
+	.state.error {
+		border-style: solid;
+		border-color: rgba(239, 68, 68, 0.22);
+		background: rgba(239, 68, 68, 0.06);
+		color: rgba(185, 28, 28, 1);
+		font-weight: 800;
+	}
 
-	.skeleton { height: 12px; border-radius: 999px; background: linear-gradient(90deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.06)); background-size: 200% 100%; animation: shimmer 1.1s infinite linear; }
-	@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+	.skeleton {
+		height: 12px;
+		border-radius: 999px;
+		background: linear-gradient(
+			90deg,
+			rgba(15, 23, 42, 0.06),
+			rgba(15, 23, 42, 0.1),
+			rgba(15, 23, 42, 0.06)
+		);
+		background-size: 200% 100%;
+		animation: shimmer 1.1s infinite linear;
+	}
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
 
 	/* modal */
-	.modalBackdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.40); display: grid; place-items: center; padding: 16px; }
-	.modal { width: min(520px, 100%); background: white; border-radius: 18px; border: 1px solid rgba(15, 23, 42, 0.10); box-shadow: 0 20px 60px rgba(0,0,0,0.25); overflow: hidden; }
-	.modalHeader { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border-bottom: 1px solid rgba(15, 23, 42, 0.08); }
-	.modalTitle { margin: 0; font-size: 13px; font-weight: 900; color: rgba(15, 23, 42, 0.85); text-transform: uppercase; letter-spacing: 0.06em; }
-	.modalClose { border: 0; background: transparent; cursor: pointer; font-size: 16px; }
-	.modalBody { padding: 14px; display: grid; gap: 10px; }
-	.modalActions { display: flex; justify-content: flex-end; gap: 10px; padding: 12px 14px; border-top: 1px solid rgba(15, 23, 42, 0.08); }
+	.modalBackdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.4);
+		display: grid;
+		place-items: center;
+		padding: 16px;
+	}
+	.modal {
+		width: min(520px, 100%);
+		background: white;
+		border-radius: 18px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+		overflow: hidden;
+	}
+	.modalHeader {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		padding: 12px 14px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+	}
+	.modalTitle {
+		margin: 0;
+		font-size: 13px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.85);
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+	.modalClose {
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+		font-size: 16px;
+	}
+	.modalBody {
+		padding: 14px;
+		display: grid;
+		gap: 10px;
+	}
+	.modalActions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 10px;
+		padding: 12px 14px;
+		border-top: 1px solid rgba(15, 23, 42, 0.08);
+	}
 
 	@media (max-width: 980px) {
-		.createLayout { grid-template-columns: 1fr; }
-		.actions { justify-content: stretch; }
-		.btnPrimary { width: 100%; }
+		.createLayout {
+			grid-template-columns: 1fr;
+		}
+		.actions {
+			justify-content: stretch;
+		}
+		.btnPrimary {
+			width: 100%;
+		}
 	}
 	@media (max-width: 420px) {
-		.gridCell { height: 20px; width: 20px; }
-		.fieldRow { grid-template-columns: 1fr; }
+		.gridCell {
+			height: 20px;
+			width: 20px;
+		}
+		.fieldRow {
+			grid-template-columns: 1fr;
+		}
 	}
 </style>
