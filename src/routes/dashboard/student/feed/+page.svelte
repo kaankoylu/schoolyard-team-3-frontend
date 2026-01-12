@@ -122,24 +122,23 @@
 		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
 	function normalizeUrl(url?: string | null) {
-	if (!url) return '';
+		if (!url) return '';
 
-	const u = String(url).trim();
-	if (!u) return '';
+		const u = String(url).trim();
+		if (!u) return '';
 
-	// already absolute
-	if (u.startsWith('http://') || u.startsWith('https://')) return u;
+		// already absolute
+		if (u.startsWith('http://') || u.startsWith('https://')) return u;
 
-	// force leading slash
-	const path = u.startsWith('/') ? u : `/${u}`;
+		// force leading slash
+		const path = u.startsWith('/') ? u : `/${u}`;
 
-	// if it's storage path, serve from Laravel host
-	if (path.startsWith('/storage/')) return `${ASSET_BASE}${path}`;
+		// if it's storage path, serve from Laravel host
+		if (path.startsWith('/storage/')) return `${ASSET_BASE}${path}`;
 
-	// everything else: treat as public asset
-	return path;
-}
-
+		// everything else: treat as public asset
+		return path;
+	}
 
 	function shortDate(date?: string) {
 		return date ? new Date(date).toLocaleString() : '';
