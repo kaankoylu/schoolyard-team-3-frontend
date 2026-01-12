@@ -2,7 +2,6 @@
 	import { onMount, onDestroy, tick } from 'svelte';
 
 	/**
-	 * ✅ SAME-ORIGIN ONLY
 	 * Vite proxy forwards /api and /storage to Laravel.
 	 */
 	const API_BASE = '';
@@ -55,7 +54,7 @@
 		likes?: number;
 		dislikes?: number;
 		score?: number;
-		my_reaction?: number | null; // 1, -1, null
+		my_reaction?: number | null; 
 
 		[key: string]: any;
 	};
@@ -169,7 +168,7 @@
 			: { width: baseWidth, height: baseHeight };
 	}
 
-	// ---------- ✅ ASSET LOADER (added) ----------
+	
 	type AssetRow = { id: number; image_url?: string | null; image?: string | null };
 
 	let assetById: Record<number, string> = {};
@@ -204,7 +203,7 @@
 		}
 	}
 
-	// ✅ updated: resolve by assetId when image_url is not in placedAssets
+	
 	function getPlacedImageUrl(item: PlacedAsset) {
 		// 1) direct fields (if backend includes them)
 		const direct =
@@ -531,7 +530,7 @@
 			loading = true;
 			error = '';
 
-			// ✅ IMPORTANT: load assets FIRST so placed assets can resolve by assetId
+			
 			await fetchAssets();
 
 			await Promise.all([fetchLeaderboard(), fetchFeed(true)]);
@@ -545,7 +544,7 @@
 		await tick();
 	});
 
-	// ✅ FIXED infinite scroll: (re)attach observer once sentinel exists
+
 	$: if (sentinelEl) {
 		obs?.disconnect();
 
