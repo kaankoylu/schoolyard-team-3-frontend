@@ -1,13 +1,11 @@
-
-<script>
-	let activeTab = 'teacher';
+<script lang="ts">
+	let activeTab: 'teacher' | 'student' | 'register' = 'teacher';
 
 	const tabs = [
 		{ id: 'teacher', label: 'Teacher' },
 		{ id: 'student', label: 'Student' },
-		{ id: 'admin', label: 'Administrator' },
 		{ id: 'register', label: 'Create account' }
-	];
+	] as const;
 
 	// Nested +page.svelte as component, as in your project
 	import LoginCard from './login_components/LoginCard.svelte';
@@ -37,13 +35,11 @@
 		<!-- Card container -->
 		<section class="cardWrap">
 			{#if activeTab === 'teacher'}
-				<LoginCard mode="teacher" active={true} />
+				<LoginCard mode="teacher" />
 			{:else if activeTab === 'student'}
-				<LoginCard mode="student" active={true} />
-			{:else if activeTab === 'admin'}
-				<LoginCard mode="admin" active={true} />
-			{:else if activeTab === 'register'}
-				<LoginCard mode="register" active={true} />
+				<LoginCard mode="student" />
+			{:else}
+				<LoginCard mode="register" />
 			{/if}
 		</section>
 
@@ -95,7 +91,7 @@
 	/* Tabs */
 	.tabs {
 		display: grid;
-		grid-template-columns: repeat(4, 1fr);
+		grid-template-columns: repeat(3, 1fr);
 		gap: 6px;
 		padding: 6px;
 		border-radius: 999px;

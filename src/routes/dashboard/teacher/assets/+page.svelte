@@ -118,7 +118,7 @@
 				return;
 			}
 
-			await loadAssets(); // safer than pushing (keeps sorting consistent)
+			await loadAssets(); 
 
 			// reset form
 			newLabel = '';
@@ -229,7 +229,7 @@
 		try {
 			let res: Response;
 
-			// no new image -> JSON PATCH
+		
 			if (!editImageFile) {
 				res = await fetch(`${API_BASE}/api/assets/${editing.id}`, {
 					method: 'PATCH',
@@ -245,7 +245,6 @@
 					})
 				});
 			} else {
-				// new image -> POST with _method=PATCH
 				const form = new FormData();
 				form.append('label', editLabel.trim());
 				form.append('width', String(editWidth));

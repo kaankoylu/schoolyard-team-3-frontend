@@ -1,281 +1,424 @@
 <script lang="ts">
-  export let mode: "teacher" | "student" | "admin" | "register" = "student";
-  export let active: boolean = false;
+	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 
-  import { api } from "$lib/api";
-  import { goto } from "$app/navigation";
+	export let mode: 'teacher' | 'student' | 'register';
 
-  const API_BASE = "http://localhost";
+	// ---------- local "accounts" ----------
+	type LocalAccount = {
+		id: string;
+		role: 'teacher';
+		name: string;
+		email: string;
+		created_at: number;
+	};
 
-  let email = "";
-  let password = "";
-  let name = "";
-  let code = "";
-  let error = "";
+	const ACCOUNTS_KEY = 'local_accounts';
 
-  // Register:
-  let regName = "";
-  let regEmail = "";
-  let regPassword = "";
-  let regPasswordConfirm = "";
+	function readAccounts(): LocalAccount[] {
+		try {
+			const raw = localStorage.getItem(ACCOUNTS_KEY);
+			const arr = raw ? JSON.parse(raw) : [];
+			return Array.isArray(arr) ? arr : [];
+		} catch {
+			return [];
+		}
+	}
 
-  function extractErrorMessage(err: any, fallback: string) {
-    console.error(err);
-    return err?.response?.data?.message || fallback;
-  }
+	function writeAccounts(accounts: LocalAccount[]) {
+		localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+	}
 
-  // TEACHER / ADMIN LOGIN
-  async function handleTeacherLogin(event: Event) {
-    event.preventDefault();
-    error = "";
+	// ---------- sessions ----------
+	type StudentSession = {
+		class_id: number;
+		student_name: string;
+		session_id: string;
+		code: string;
+		created_at: number;
+	};
 
-    try {
-      await api.post("/api/login", { email, password });
-      goto("/dashboard/teacher");
-    } catch (err: any) {
-      error = extractErrorMessage(err, "Er is iets fout gegaan met het inloggen");
-    }
-  }
+	type TeacherSession = {
+		teacher_name: string;
+		class_id?: number;
+		email?: string;
+		created_at: number;
+	};
 
-  // ✅ STUDENT LOGIN (name + class code)
-  async function handleStudentLogin(event: Event) {
-    event.preventDefault();
-    error = "";
+	const STUDENT_KEY = 'student_session';
+	const TEACHER_KEY = 'teacher_session';
 
-    const studentName = name.trim();
-    const classCode = code.trim().toUpperCase();
+	function now() {
+		return Date.now();
+	}
 
-    if (!studentName || !classCode) {
-      error = "Vul je naam en code in"; 
-      return;
-    }
+	function makeId() {
+		return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+	}
 
-    try {
-      const res = await fetch(`${API_BASE}/api/student-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ code: classCode, student_name: studentName })
-      });
+	// ---------- form state ----------
+	let name = '';
+	let email = '';
+	let class_id: number | '' = ''; // teacher optional only
+	let code = ''; // student required
+	let roleForRegister: 'teacher' = 'teacher';
 
-      if (res.status === 422) {
-        const data = await res.json().catch(() => null);
-        error = data?.message ?? "De code is verlopen of ongeldig";
-        return;
-      }
+	let msg = '';
+	let err = '';
+	let accounts: LocalAccount[] = [];
 
-      if (!res.ok) {
-        const t = await res.text();
-        console.error(t);
-        error = "Er is iets fout gegaan met het inloggen als student";
-        return;
-      }
+	let verifyingCode = false;
 
-      const data = await res.json(); // { class_id, student_name }
+	const ROUTES = {
+		student: '/dashboard/student',
+		teacher: '/dashboard/teacher'
+	};
 
-      localStorage.setItem(
-        "student_session",
-        JSON.stringify({
-          class_id: data.class_id,
-          student_name: data.student_name,
-          code: classCode,
-          created_at: Date.now()
-        })
-      );
+	onMount(() => {
+		accounts = readAccounts();
 
-      goto("/dashboard/student");
-    } catch (e) {
-      console.error(e);
-      error = "Er is iets fout gegaan met het inloggen als student";
-    }
-  }
+		try {
+			if (mode === 'student') {
+				const raw = localStorage.getItem(STUDENT_KEY);
+				if (raw) {
+					const s = JSON.parse(raw);
+					if (s?.student_name) name = String(s.student_name);
+					if (s?.code) code = String(s.code);
+				}
+			}
 
-  // REGISTER
-  async function handleRegister(event: Event) {
-    event.preventDefault();
-    error = "";
+			if (mode === 'teacher') {
+				const raw = localStorage.getItem(TEACHER_KEY);
+				if (raw) {
+					const s = JSON.parse(raw);
+					if (s?.teacher_name) name = String(s.teacher_name);
+					if (s?.email) email = String(s.email);
+					if (s?.class_id) class_id = Number(s.class_id);
+				}
+			}
+		} catch {
+			// ignore
+		}
+	});
 
-    if (regPassword !== regPasswordConfirm) {
-      error = "Onjuist wachtwoord";
-      return;
-    }
+	function clearMessages() {
+		msg = '';
+		err = '';
+	}
 
-    try {
-      await api.post("/api/register", {
-        name: regName,
-        email: regEmail,
-        password: regPassword,
-        password_confirmation: regPasswordConfirm
-      });
+	function logout() {
+		clearMessages();
+		if (mode === 'student') localStorage.removeItem(STUDENT_KEY);
+		if (mode === 'teacher') localStorage.removeItem(TEACHER_KEY);
+		msg = 'Cleared local session.';
+	}
 
-      goto("/login");
-    } catch (err: any) {
-      error = extractErrorMessage(err, "Er is een fout opgetreden met de registratie");
-    }
-  }
+	// (kept if you still use it elsewhere)
+	async function resolveClassIdByCode(codeStr: string): Promise<number> {
+		const url = new URL('/api/class-codes/resolve', window.location.origin);
+		url.searchParams.set('code', codeStr);
+
+		const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
+
+		if (!res.ok) {
+			const t = await res.text();
+			throw new Error(t || `Invalid code (${res.status})`);
+		}
+
+		const data = await res.json();
+		const classId = Number(data?.class_id ?? data?.class?.id ?? data?.classId);
+
+		if (!classId || Number.isNaN(classId)) {
+			throw new Error('Server returned no class_id for this code.');
+		}
+
+		return classId;
+	}
+
+	async function loginStudent() {
+		clearMessages();
+
+		const n = name.trim();
+		const c = code.trim();
+
+		if (!n) return (err = 'Enter student name.');
+		if (!c) return (err = 'Enter class code.');
+
+		verifyingCode = true;
+
+		try {
+			const res = await fetch('/api/student-session', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Accept: 'application/json'
+				},
+				body: JSON.stringify({
+					student_name: n,
+					code: c
+				})
+			});
+
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				throw new Error(body?.message ?? 'Invalid or expired code.');
+			}
+
+			const data = await res.json();
+
+			const sessionId =
+				crypto.randomUUID?.() ??
+				`${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+
+			const s: StudentSession = {
+				student_name: data.student_name,
+				class_id: data.class_id,
+				session_id: sessionId,
+				code: c,
+				created_at: now()
+			};
+
+			localStorage.setItem(STUDENT_KEY, JSON.stringify(s));
+			goto(ROUTES.student);
+		} catch (e: any) {
+			err = e?.message ?? 'Login failed.';
+		} finally {
+			verifyingCode = false;
+		}
+	}
+
+	function loginTeacher() {
+		clearMessages();
+
+		const n = name.trim();
+		if (!n) return (err = 'Enter teacher name.');
+
+		const e = email.trim().toLowerCase();
+		if (e) {
+			const exists = accounts.find((a) => a.role === 'teacher' && a.email.toLowerCase() === e);
+			if (!exists) {
+				return (err =
+					'This teacher email is not in local accounts. Create it in "Create account" (or leave email empty).');
+			}
+		}
+
+		const s: TeacherSession = {
+			teacher_name: n,
+			email: e ? e : undefined,
+			class_id: class_id === '' ? undefined : Number(class_id),
+			created_at: now()
+		};
+
+		localStorage.setItem(TEACHER_KEY, JSON.stringify(s));
+		goto(ROUTES.teacher);
+	}
+
+	function registerLocalAccount() {
+		clearMessages();
+
+		const n = name.trim();
+		const e = email.trim().toLowerCase();
+
+		if (!n) return (err = 'Enter a name.');
+		if (!e || !e.includes('@')) return (err = 'Enter a valid email.');
+
+		const current = readAccounts();
+		const exists = current.some((a) => a.role === 'teacher' && a.email.toLowerCase() === e);
+		if (exists) return (err = 'This email already exists for that role.');
+
+		const acc: LocalAccount = {
+			id: makeId(),
+			role: 'teacher',
+			name: n,
+			email: e,
+			created_at: now()
+		};
+
+		const next = [acc, ...current];
+		writeAccounts(next);
+		accounts = next;
+
+		msg = `Local teacher account created. Now login on the teacher tab (email optional).`;
+	}
+
+	function removeLocalAccount(id: string) {
+		const next = readAccounts().filter((a) => a.id !== id);
+		writeAccounts(next);
+		accounts = next;
+	}
 </script>
 
-<div
-  class={`w-full max-w-md bg-white shadow-md p-8 rounded-xl ${
-    active ? "border-4" : "border border-gray-200"
-  }`}
-  style={active ? "border-color: #DAB2FF;" : ""}>
+<div class="card">
+	{#if mode === 'student'}
+		<h2 class="h">Student login</h2>
+		<p class="p">Enter your name + the code your teacher gave you.</p>
 
-  {#if mode === "teacher"}
-    <h2 class="text-xl font-semibold">Docenten Login</h2>
-    <p class="text-gray-500 text-sm mb-6">Log in met jouw eigen account</p>
+		<div class="grid">
+			<label class="field">
+				<span>Name</span>
+				<input class="input" bind:value={name} placeholder="e.g. Sami" autocomplete="name" />
+			</label>
 
-    <form class="space-y-4" on:submit={handleTeacherLogin}>
-      <div>
-        <label class="font-medium text-sm">Email</label>
-        <input
-          type="email"
-          placeholder="docent@school.com"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={email}
-          required
-        />
-      </div>
+			<label class="field">
+				<span>Class code</span>
+				<input
+					class="input"
+					bind:value={code}
+					placeholder="e.g. 123456"
+					autocomplete="one-time-code"
+					inputmode="numeric"
+				/>
+			</label>
 
-      <div>
-        <label class="font-medium text-sm">Wachtwoord</label>
-        <input
-          type="password"
-          placeholder="••••••••"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={password}
-          required
-        />
-      </div>
+			<div class="actions">
+				<button class="btn" type="button" on:click={loginStudent} disabled={verifyingCode}>
+					{verifyingCode ? 'Checking…' : 'Login'}
+				</button>
+				<button class="btn ghost" type="button" on:click={logout} disabled={verifyingCode}>
+					Clear
+				</button>
+			</div>
+		</div>
 
-      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
-        Log in als docent
-      </button>
-    </form>
+	{:else if mode === 'teacher'}
+		<h2 class="h">Teacher login</h2>
 
-  {:else if mode === "student"}
-    <h2 class="student-font-size-login">🎉 Student Login</h2>
-    <p class="text-gray-500 text-sm mb-6 student-font-size-description">
-      Vul de code in en starten maar!
-    </p>
+		<div class="grid">
+			<label class="field">
+				<span>Name</span>
+				<input class="input" bind:value={name} placeholder="e.g. Mr. Smith" autocomplete="name" />
+			</label>
 
-    <form class="space-y-4" on:submit={handleStudentLogin}>
-      <div>
-        <label class="font-medium text-xl text-black">✏️ Naam</label>
-        <input
-          type="text"
-          placeholder="Vul je naam hier in"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={name}
-          required
-        />
-      </div>
+			<label class="field">
+				<span>Email</span>
+				<input class="input" bind:value={email} placeholder="teacher@example.com" autocomplete="email" />
+			</label>
 
-      <div>
-        <label class="font-medium text-xl text-black">🔑 Code</label>
-        <input
-          type="text"
-          placeholder="ABC123"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={code}
-          required
-        />
-      </div>
+			<div class="actions">
+				<button class="btn" type="button" on:click={loginTeacher}>Login</button>
+				<button class="btn ghost" type="button" on:click={logout}>Clear</button>
+			</div>
+		</div>
 
-      <button
-        type="submit"
-        class="w-full text-white py-2 rounded-md bg-gradient-to-r from-purple-400 to-pink-400 hover:from-purple-500 hover:to-pink-500">
-        🚀 Let's go!
-      </button>
-    </form>
+	{:else}
+		<h2 class="h">Create account (local only)</h2>
+		<p class="p">Stores in localStorage. No backend.</p>
 
-  {:else if mode === "admin"}
-    <h2 class="text-xl font-semibold">Administratie Login</h2>
-    <p class="text-gray-500 text-sm mb-6">Log in met jouw administratie account</p>
+		<div class="grid">
+			<label class="field">
+				<span>Role</span>
+				<select class="input" bind:value={roleForRegister} disabled>
+					<option value="teacher">Teacher</option>
+				</select>
+			</label>
 
-    <form class="space-y-4" on:submit={handleTeacherLogin}>
-      <div>
-        <label class="font-medium text-sm">Email</label>
-        <input
-          type="text"
-          placeholder="administratie@school.com"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={email}
-          required
-        />
-      </div>
+			<label class="field">
+				<span>Name</span>
+				<input class="input" bind:value={name} placeholder="e.g. Ms. Johnson" autocomplete="name" />
+			</label>
 
-      <div>
-        <label class="font-medium text-sm">Wachtwoord</label>
-        <input
-          type="password"
-          placeholder="••••••••"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={password}
-          required
-        />
-      </div>
+			<label class="field">
+				<span>Email</span>
+				<input class="input" bind:value={email} placeholder="name@example.com" autocomplete="email" />
+			</label>
 
-      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
-        Log in als administrator
-      </button>
-    </form>
+			<div class="actions">
+				<button class="btn" type="button" on:click={registerLocalAccount}>Create</button>
+			</div>
+		</div>
+	{/if}
 
-  {:else if mode === "register"}
-    <h2 class="text-xl font-semibold">Maak een account</h2>
-    <p class="text-gray-500 text-sm mb-6">Maak een nieuw account aan.</p>
-
-    <form class="space-y-4" on:submit={handleRegister}>
-      <div>
-        <label class="font-medium text-sm">Naam</label>
-        <input
-          type="text"
-          placeholder="Jouw naam"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={regName}
-          required
-        />
-      </div>
-
-      <div>
-        <label class="font-medium text-sm">Email</label>
-        <input
-          type="email"
-          placeholder="jij@school.com"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={regEmail}
-          required
-        />
-      </div>
-
-      <div>
-        <label class="font-medium text-sm">Wachtwoord</label>
-        <input
-          type="password"
-          placeholder="••••••••"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={regPassword}
-          required
-        />
-      </div>
-
-      <div>
-        <label class="font-medium text-sm">Herhaal wachtwoord</label>
-        <input
-          type="password"
-          placeholder="••••••••"
-          class="mt-1 w-full px-4 py-2 bg-gray-100 rounded-md outline-none"
-          bind:value={regPasswordConfirm}
-          required
-        />
-      </div>
-
-      <button type="submit" class="w-full bg-black text-white py-2 rounded-md hover:bg-gray-900">
-        Account aanmaken
-      </button>
-    </form>
-  {/if}
-
-  {#if error}
-    <p class="mt-4 text-red-500">{error}</p>
-  {/if}
+	{#if err}
+		<div class="alert error">{err}</div>
+	{/if}
+	{#if msg}
+		<div class="alert ok">{msg}</div>
+	{/if}
 </div>
+
+<style>
+	.card { padding: 4px; }
+
+	.h { margin: 6px 2px 2px; font-size: 16px; font-weight: 900; color: #0f172a; }
+	.p { margin: 0 2px 12px; font-size: 12px; color: rgba(15,23,42,0.6); }
+
+	.grid { display: grid; gap: 10px; }
+
+	.field { display: grid; gap: 6px; font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.65); }
+
+	.input {
+		border: 1px solid rgba(15,23,42,0.14);
+		border-radius: 14px;
+		padding: 10px 10px;
+		font-size: 13px;
+		background: rgba(255,255,255,0.95);
+	}
+	.input:focus { outline: none; border-color: rgba(16,185,129,0.45); box-shadow: 0 0 0 3px rgba(16,185,129,0.18); }
+
+	.actions { display: flex; gap: 10px; margin-top: 2px; }
+
+	.btn {
+		flex: 1;
+		border-radius: 14px;
+		border: 1px solid rgba(16, 185, 129, 0.45);
+		background: rgba(16, 185, 129, 0.95);
+		color: #fff;
+		font-size: 13px;
+		font-weight: 950;
+		padding: 10px 12px;
+		cursor: pointer;
+		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+	}
+	.btn.ghost { border: 1px solid rgba(15,23,42,0.12); background: rgba(248,250,252,0.95); color: rgba(15,23,42,0.85); box-shadow: 0 12px 24px rgba(15,23,42,0.08); }
+
+	.alert {
+		margin-top: 12px;
+		border-radius: 14px;
+		padding: 10px;
+		font-weight: 950;
+		font-size: 12px;
+		border: 1px solid rgba(15,23,42,0.10);
+		background: rgba(255,255,255,0.8);
+	}
+	.alert.error { border-color: rgba(239,68,68,0.22); background: rgba(239,68,68,0.06); color: rgba(185,28,28,1); }
+	.alert.ok { border-color: rgba(16,185,129,0.22); background: rgba(16,185,129,0.06); color: rgba(15,118,110,1); }
+
+	.list { margin-top: 6px; border-top: 1px solid rgba(15,23,42,0.08); padding-top: 10px; }
+	.listTitle { font-size: 12px; font-weight: 950; color: rgba(15,23,42,0.7); margin-bottom: 8px; }
+	.empty { font-size: 12px; color: rgba(15,23,42,0.55); font-weight: 900; }
+
+	.row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+		padding: 10px;
+		border-radius: 14px;
+		border: 1px solid rgba(15,23,42,0.10);
+		background: rgba(248,250,252,0.9);
+		margin-bottom: 8px;
+	}
+	.rowMain { min-width: 0; }
+	.rowTop { font-weight: 950; font-size: 12px; }
+	.rowSub { font-size: 11px; color: rgba(15,23,42,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+	.tag {
+		margin-left: 6px;
+		font-size: 10px;
+		font-weight: 950;
+		padding: 2px 8px;
+		border-radius: 999px;
+		border: 1px solid rgba(59,130,246,0.18);
+		background: rgba(59,130,246,0.10);
+		color: rgba(30,64,175,0.95);
+	}
+
+	.miniDanger {
+		border-radius: 12px;
+		border: 1px solid rgba(239,68,68,0.22);
+		background: rgba(239,68,68,0.06);
+		color: rgba(185,28,28,1);
+		font-weight: 950;
+		padding: 8px 10px;
+		cursor: pointer;
+	}
+</style>
