@@ -121,12 +121,21 @@
 	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
 	function normalizeUrl(url?: string | null) {
-		if (!url) return '';
-		const u = String(url).trim();
-		if (u.startsWith('http://') || u.startsWith('https://')) return u;
-		const path = u.startsWith('/') ? u : `/${u}`;
-		return `${ASSET_BASE}${path}`;
-	}
+	if (!url) return '';
+
+	const u = String(url).trim();
+	if (!u) return '';
+
+	// already absolute
+	if (u.startsWith('http://') || u.startsWith('https://')) return u;
+
+	// force leading slash
+	const path = u.startsWith('/') ? u : `/${u}`;
+
+	// same-origin proxy serves /storage and public assets
+	return path;
+}
+
 
 	function shortDate(date?: string) {
 		return date ? new Date(date).toLocaleString() : '';

@@ -3,7 +3,8 @@
   import LoginHeader from '../lib/components/LoginHeader.svelte';
   import { page } from '$app/stores';
   import './layout.css';
-	import Header from '$lib/components/Header.svelte';
+  import Header from '$lib/components/Header.svelte';
+  import Alert from '$lib/components/Alert.svelte';
 
   /** @type {{children: import('svelte').Snippet}} */
   let { children } = $props();
@@ -20,6 +21,7 @@
     {@render children()}
   </main>
 </div>
+<Alert />
 
 
 <style>

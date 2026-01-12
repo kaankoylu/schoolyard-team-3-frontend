@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { page } from "$app/stores";
   import { get } from "svelte/store";
+  import { showAlert } from "$lib/utils/alert";
 
   type ScreenData = {
     className: string;
@@ -42,7 +43,7 @@
     if (!data?.code) return;
     try {
       await navigator.clipboard.writeText(data.code);
-      alert("Code gekopieerd!");
+      showAlert("Code gekopieerd", "success", 3000);
     } catch {
       prompt("Kopieer de code:", data.code);
     }
@@ -91,7 +92,6 @@
       <div class="header">
         <div>
           <div class="title">Klas: {data.className}</div>
-         
         </div>
         <div class:badge={true} class:expiredBadge={expired}>
           {expired ? "Verlopen" : "Actief"}

@@ -283,7 +283,9 @@
 	<div class="container">
 		<header class="topbar">
 			<div>
-				<h1 class="title">Asset overzicht</h1>
+
+				<h1 class="title">Asset Overview</h1>
+
 				<p class="subtitle">Nieuwe assets toevoegen een toegankelijkheid aanpassen
 				</p>
 			</div>
@@ -293,7 +295,7 @@
 
 		<section class="card">
 			<div class="cardHeader">
-				<h2 class="cardTitle">Asset overzicht</h2>
+				<h2 class="cardTitle">Asset toevoegen</h2>
 				<p class="cardHint">Kies een grote op het grid en upload dan een foto</p>
 			</div>
 
