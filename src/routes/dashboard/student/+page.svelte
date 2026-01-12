@@ -41,13 +41,6 @@
 			imagePath="/dashboard/like.png"
 			style="kids"
 		/>
-		<DashboardNavigationCard
-			description="Lees wat jouw nieuwe speeltuin  kan hebben"
-			title="Wiki"
-			buttonName="lees de Wiki"
-			href="fcgv"
-			imagePath="/dashboard/OpenBook.png"
-			style="kids"
-		/>
+	
 	</div>
 </div>
