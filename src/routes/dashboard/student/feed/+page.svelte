@@ -22,6 +22,7 @@
 		image_url?: string;
 
 		asset?: {
+			id?: number;
 			label?: string;
 			width?: number;
 			height?: number;
@@ -121,21 +122,17 @@
 	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
 	function normalizeUrl(url?: string | null) {
-	if (!url) return '';
+		if (!url) return '';
 
-	const u = String(url).trim();
-	if (!u) return '';
-
-	// already absolute
-	if (u.startsWith('http://') || u.startsWith('https://')) return u;
-
-	// force leading slash
-	const path = u.startsWith('/') ? u : `/${u}`;
+		const u = String(url).trim();
 
 	// same-origin proxy serves /storage and public assets
 	return path;
 }
 
+		// if backend returns '/storage/...', Vite proxy should forward it
+		return `${ASSET_BASE}${path}`;
+	}
 
 	function shortDate(date?: string) {
 		return date ? new Date(date).toLocaleString() : '';
@@ -165,9 +162,58 @@
 			: { width: baseWidth, height: baseHeight };
 	}
 
+	// ---------- ✅ ASSET LOADER (added) ----------
+	type AssetRow = { id: number; image_url?: string | null; image?: string | null };
+
+	let assetById: Record<number, string> = {};
+	let assetsLoaded = false;
+
+	async function fetchAssets() {
+		assetsLoaded = false;
+
+		try {
+			const res = await fetch(`${API_BASE}/api/assets`, {
+				headers: { Accept: 'application/json' }
+			});
+			if (!res.ok) throw new Error(`Assets laden mislukt (${res.status})`);
+
+			const data = await res.json();
+			const list: AssetRow[] = Array.isArray(data) ? data : data?.data ?? [];
+
+			const map: Record<number, string> = {};
+			for (const a of list) {
+				const raw = a.image_url ?? a.image ?? null;
+				if (!raw) continue;
+				map[a.id] = normalizeUrl(raw);
+			}
+
+			assetById = map;
+			// console.log('assetById', assetById);
+		} catch (e) {
+			console.error(e);
+			assetById = {};
+		} finally {
+			assetsLoaded = true;
+		}
+	}
+
+	// ✅ updated: resolve by assetId when image_url is not in placedAssets
 	function getPlacedImageUrl(item: PlacedAsset) {
-		const url = item.image_url ?? item.asset?.image_url ?? item.asset?.image ?? null;
-		return normalizeUrl(url) || '/placeholder.png';
+		// 1) direct fields (if backend includes them)
+		const direct =
+			item.image_url ??
+			item.asset?.image_url ??
+			item.asset?.image ??
+			(item as any)?.image ??
+			null;
+
+		if (direct) return normalizeUrl(direct) || '/placeholder.png';
+
+		// 2) resolve via lookup map
+		const id = item.assetId ?? item.asset?.id;
+		if (typeof id === 'number' && assetById[id]) return assetById[id];
+
+		return '/placeholder.png';
 	}
 
 	// ---------- state ----------
@@ -184,7 +230,6 @@
 	let leaderboard: LeaderboardRow[] = [];
 	let leaderboardLoading = true;
 
-	// ✅ sentinel + observer (fixed)
 	let sentinelEl: HTMLDivElement | null = null;
 	let obs: IntersectionObserver | null = null;
 
@@ -215,7 +260,7 @@
 		document.body.style.overflow = '';
 	}
 
-	// ✅ filters
+	// filters
 	let filterClass: 'all' | number = 'all';
 	let filterUser = '';
 
@@ -224,7 +269,6 @@
 		filterUser = '';
 	}
 
-	// dropdown values from loaded feed
 	$: classOptions = Array.from(
 		new Set(feed.map((d) => d.class_id).filter((v): v is number => typeof v === 'number'))
 	).sort((a, b) => a - b);
@@ -233,7 +277,6 @@
 		new Set(feed.map((d) => (d.student_name ?? '').trim()).filter((n) => n.length > 0))
 	).sort((a, b) => a.localeCompare(b));
 
-	// apply filters client-side
 	$: filteredFeed = feed.filter((d) => {
 		if (filterClass !== 'all' && (d.class_id ?? null) !== filterClass) return false;
 		if (filterUser.trim()) {
@@ -329,7 +372,6 @@
 		};
 
 		feed = feed.map((d) => (d.id === design.id ? updateLocal(d) : d));
-
 		if (focusDesign?.id === design.id) focusDesign = updateLocal(focusDesign);
 
 		try {
@@ -457,6 +499,10 @@
 		try {
 			loading = true;
 			error = '';
+
+			// ✅ IMPORTANT: load assets FIRST so placed assets can resolve by assetId
+			await fetchAssets();
+
 			await Promise.all([fetchLeaderboard(), fetchFeed(true)]);
 		} catch (e: any) {
 			console.error(e);
@@ -465,11 +511,10 @@
 			loading = false;
 		}
 
-		// ensure sentinel is bound before observer setup
 		await tick();
 	});
 
-	// ✅ FIXED infinite scroll: reactively (re)attach observer once sentinel exists
+	// ✅ FIXED infinite scroll: (re)attach observer once sentinel exists
 	$: if (sentinelEl) {
 		obs?.disconnect();
 
@@ -477,11 +522,7 @@
 			(entries) => {
 				if (entries.some((e) => e.isIntersecting)) loadMore();
 			},
-			{
-				root: null,
-				threshold: 0.1,
-				rootMargin: '600px 0px' // prefetch earlier, feels smoother
-			}
+			{ root: null, threshold: 0.1, rootMargin: '600px 0px' }
 		);
 
 		obs.observe(sentinelEl);
@@ -493,9 +534,12 @@
 	});
 </script>
 
+
 <div class="page">
 	<header class="topbar">
 		<div class="brand">
+			<button class="backBtn" type="button" on:click={backroll}>← Terug</button>
+
 			<div class="logo">🌿</div>
 			<div class="brandText">
 				<div class="brandTitle">Design Feed</div>
@@ -514,7 +558,6 @@
 	</header>
 
 	<div class="shell">
-		<!-- LEFT: leaderboard (sticky) -->
 		<aside class="left">
 			<div class="leftSticky">
 				<div class="panel">
@@ -571,9 +614,7 @@
 			</div>
 		</aside>
 
-		<!-- MAIN -->
 		<main class="main">
-			<!-- ✅ Filters -->
 			<div class="filters">
 				<div class="filtersLeft">
 					<label class="fLabel">
@@ -741,7 +782,6 @@
 		</main>
 	</div>
 
-	<!-- Focus modal -->
 	{#if focusOpen && focusDesign}
 		<div class="focusBackdrop" on:click={closeFocus}></div>
 
@@ -829,7 +869,6 @@
 		</div>
 	{/if}
 
-	<!-- COMMENTS DRAWER -->
 	{#if commentsOpen}
 		<div class="drawerBackdrop" on:click={closeComments}></div>
 
@@ -896,6 +935,9 @@
 </div>
 
 <style>
+
+
+
 	.page {
 		min-height: 100vh;
 		background:
@@ -966,7 +1008,7 @@
 	.left { display: block; }
 	.leftSticky {
 		position: sticky;
-		top: 78px; /* under topbar */
+		top: 78px;
 		display: grid;
 		gap: 12px;
 		align-content: start;
@@ -1031,7 +1073,6 @@
 
 	.main { min-height: calc(100vh - 80px); }
 
-	/* ✅ Filters UI */
 	.filters {
 		position: sticky;
 		top: 78px;
@@ -1135,14 +1176,14 @@
 			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.16), transparent 60%),
 			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.10), transparent 55%);
 	}
-
-	.placed {
+.placed {
 		z-index: 1;
 		border-radius: 4px;
 		overflow: hidden;
 		background: rgba(255,255,255,0.10);
 		border: 1px solid rgba(255,255,255,0.18);
 		box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+		pointer-events: none;
 	}
 	.placed img { width: 100%; height: 100%; display: block; object-fit: cover; }
 
@@ -1192,7 +1233,6 @@
 		cursor: pointer;
 	}
 
-	/* state/skeleton */
 	.state {
 		padding: 14px;
 		border-radius: 18px;

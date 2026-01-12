@@ -167,19 +167,27 @@
 	});
 
 	async function saveFeedback() {
-		const text = feedbackText.trim();
-		if (!text) return;
+	const text = feedbackText.trim();
+	if (!text) return;
 
-		savingFeedback = true;
-		try {
-			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				body: JSON.stringify({ text })
-			});
+	savingFeedback = true;
+	try {
+		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json'
+			},
+			body: JSON.stringify({ text })
+		});
+
+		if (!res.ok) {
+			const body = await res.text();
+			console.error('Feedback save failed:', res.status, body);
+			throw new Error('Feedback opslaan mislukt');
+		}
+
+		showAlert('Feedback opgeslagen 👍', 'success', 3000);
 
 			if (!res.ok) {
 				const body = await res.text();
@@ -200,6 +208,8 @@
 			savingFeedback = false;
 		}
 	}
+}
+
 
 	async function saveGrade() {
 		if (grade === null) return;

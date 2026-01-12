@@ -183,20 +183,29 @@
 			: designs.filter((d) => Number(getClassId(d)) === Number(selectedClassId));
 
 	async function submitFeedback(designId: number) {
-		const text = feedbackByDesign[designId]?.trim();
-		if (!text) return;
+	const text = feedbackByDesign[designId]?.trim();
+	if (!text) return;
 
-		savingFor = designId;
+	savingFor = designId;
 
-		try {
-			const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Accept: 'application/json'
-				},
-				body: JSON.stringify({ text })
-			});
+	try {
+		const res = await fetch(`${API_BASE}/api/designs/${designId}/feedback`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Accept: 'application/json'
+			},
+			body: JSON.stringify({ text })
+		});
+
+		if (!res.ok) {
+			const body = await res.text();
+			console.error('Feedback error', res.status, body);
+			alert('Opslaan van feedback mislukt. Check de console.');
+			return;
+		}
+
+		showAlert('Feedback opgeslagen 👍', 'success', 3000);
 
 			if (!res.ok) {
 				const body = await res.text();
@@ -217,6 +226,8 @@
 			savingFor = null;
 		}
 	}
+}
+	
 
 	function shortDate(date?: string) {
 		if (!date) return '';
@@ -313,7 +324,7 @@
 								<div class="badges">
 									<span class="badge">#{design.id}</span>
 									{#if design.feedback}
-										<span class="badge ok">Feedback ✔</span>
+										<span class="badge ok">Feedback	 ✔</span>
 									{/if}
 								</div>
 							</div>
