@@ -69,13 +69,13 @@
 	}
 
 	onMount(() => {
-		// ✅ FIX: generator stores in localStorage, so read that first
+	
 		data =
 			safeParse(localStorage.getItem('code_screen_data')) ||
 			safeParse(sessionStorage.getItem('code_screen_data')) ||
 			null;
 
-		// fallback from query params (optional)
+
 		if (!data) {
 			const p = get(page).url.searchParams;
 			const className = p.get('className');

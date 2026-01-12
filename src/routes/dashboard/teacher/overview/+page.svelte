@@ -354,7 +354,7 @@
 									<div><span class="metaKey">Grid</span> {design.rows} × {design.cols}</div>
 								{/if}
 
-								<!-- ✅ show class NAME -->
+								<!-- ✅show class NAME -->
 								<div><span class="metaKey">Klas</span> {getClassName(design)}</div>
 
 								{#if design.student_name}

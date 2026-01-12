@@ -35,12 +35,5 @@
             buttonName="To student designs" 
             href="/dashboard/teacher/overview"
         />
-
-        <DashboardNavigationCard 
-            description="View the student's feedback on assets and designs" 
-            title="Wiki" 
-            buttonName="To wiki" 
-            href="fcgv"
-        />
     </div>
 </div>

@@ -885,10 +885,10 @@
 		gap: 2px;
 		background: transparent;
 		position: relative;
-		z-index: 2; /* ✅ above overlay */
+		z-index: 2; 
 	}
 
-	/* ✅ THIS is the missing visual grid overlay */
+
 	.design-area::after {
 		content: '';
 		position: absolute;
@@ -899,7 +899,7 @@
 			linear-gradient(90deg, rgba(0, 0, 0, 0.25) 1px, transparent 1px);
 		background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
 		pointer-events: none;
-		z-index: 1; /* ✅ between map and grid */
+		z-index: 1; 
 	}
 
 	/* make each cell slightly visible too */
