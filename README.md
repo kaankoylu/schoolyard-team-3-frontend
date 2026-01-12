@@ -1,16 +1,16 @@
 # Project Overview
 
-This project is a web application that enables teachers and students to co-design greener schoolyards. It combines a structured design workflow with an accessible, game-like interface, allowing students of different ages to actively participate in shaping their future school environment.
+This project is a web application that helps teachers and students design a green school playground together. This web application consists of a design process integrated into an interactive game-like environment that helps engage students of all ages to design their future environment.
 
-The platform is delivered as a full frontend–backend system.
+The system comes with a full frontend and backend environment.
 
 **Frontend**
-A SvelteKit application that provides the main user interface for both teachers and elementary school students.
+The frontend is a SvelteKit application that provides the main user interface for both the teacher and the elementary school students.
 
 **Backend**
-A Node/Express API responsible for managing sessions, templates, user roles, assets, and design submissions.
+THe backend uses Node/Express API responsible for managing the sessions, templates, the user roles, assets and the design submissions made by students
 
-Together, these components form a working application rather than a conceptual prototype.
+With thes components we form a working application rather than a conceptual prototype
 
 ---
 
@@ -18,13 +18,13 @@ Together, these components form a working application rather than a conceptual p
 
 The purpose of this tool is to support schools in creating greener, more engaging schoolyards by providing a structured, collaborative design environment. The system enables schools to:
 
-* Upload or select the schoolyard map used for the design exercise
+* Upload and/or select the schoolyard map used for the design exercise
 * Allow students to design yard layouts using drag-and-drop visual elements
-* Collect, store, and manage student submissions
-* Compare, evaluate, and combine designs for decision-making
+* Collect, store and manage student submissions
+* Compare, evaluate and combine designs for decision-making
 * Provide structure and inspiration throughout the design process
 
-The result is a digital platform that supports collaboration, creativity, and sustainability within education.
+The result is a digital platform that supports collaboration, creativity and sustainability within education.
 
 ---
 
@@ -34,23 +34,22 @@ The result is a digital platform that supports collaboration, creativity, and su
 
 * Upload custom schoolyard templates
 * Generate temporary classroom login codes
-* Review, compare, and analyze submitted student designs
+* Review, compare and analyze submitted student designs
 * Organize design competitions between groups
-* Export insights and data for administrators or external stakeholders
 
 ## Student Functionality
 
 * Simple, visual design interface
 * Drag-and-drop components (plants, structures, play elements, etc.)
 * Guided interactions suitable for younger students
-* Optional introductory tutorial video
-* Support for digital and physical workflows (e.g., Lego or paper prototypes)
+* Text based introduction
 
 ## System-Level Features
 
 * Frontend implemented with SvelteKit
 * Backend API built on Node/Express
-* Defined user roles (administrator, teacher, student)
+* Unique API gateway 
+* Defined user roles (teacher and student)
 * Modular design engine prepared for future expansion
 
 ---
@@ -59,7 +58,6 @@ The result is a digital platform that supports collaboration, creativity, and su
 
 * Teachers guiding schoolyard design projects
 * Students (approximately 7–12 years old) contributing creative ideas
-* School administrators reviewing aggregated and comparative insights
 
 ---
 
@@ -71,7 +69,7 @@ This project originated from a Design Sprint. The team performed:
 * Competitive and inspirational analysis
 * Concept sketching and solution exploration
 * Prototyping using Figma and AI-assisted tools
-* User testing with students, teachers, and a parent
+* User testing with students, teachers and a parent
 
 User testing results averaged **7.95/10**, validating the concept and guiding improvements.
 
