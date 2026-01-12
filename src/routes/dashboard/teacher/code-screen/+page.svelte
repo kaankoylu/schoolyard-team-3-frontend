@@ -1,95 +1,79 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { page } from '$app/stores';
-	import { get } from 'svelte/store';
+  import { onMount } from "svelte";
+  import { page } from "$app/stores";
+  import { get } from "svelte/store";
+  import { showAlert } from '$lib/utils/alert';
 
-	type ScreenData = {
-		className: string;
-		code: string;
-		expiresAt: string | null;
-	};
+  type ScreenData = {
+    className: string;
+    code: string;
+    expiresAt: string | null;
+  };
 
-	let data: ScreenData | null = null;
+  let data: ScreenData | null = null;
 
-	let remaining = '';
-	let expired = false;
-	let interval: any;
+  let remaining = "";
+  let expired = false;
+  let interval: any;
 
-	function format(ms: number) {
-		const m = Math.floor(ms / 60000);
-		const s = Math.floor((ms % 60000) / 1000);
-		return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-	}
+  function format(ms: number) {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
 
-	function tick() {
-		if (!data?.expiresAt) {
-			remaining = '';
-			expired = false;
-			return;
-		}
-		const diff = new Date(data.expiresAt).getTime() - Date.now();
-		if (diff <= 0) {
-			expired = true;
-			remaining = '⛔ Code verlopen';
-			clearInterval(interval);
-			return;
-		}
-		expired = false;
-		remaining = `Nog geldig: ${format(diff)}`;
-	}
+  function tick() {
+    if (!data?.expiresAt) {
+      remaining = "";
+      expired = false;
+      return;
+    }
+    const diff = new Date(data.expiresAt).getTime() - Date.now();
+    if (diff <= 0) {
+      expired = true;
+      remaining = "⛔ Code verlopen";
+      clearInterval(interval);
+      return;
+    }
+    expired = false;
+    remaining = `Nog geldig: ${format(diff)}`;
+  }
 
-	async function copyCode() {
-		if (!data?.code) return;
-		try {
-			await navigator.clipboard.writeText(data.code);
-			alert('Code gekopieerd!');
-		} catch {
-			prompt('Kopieer de code:', data.code);
-		}
-	}
+  async function copyCode() {
+    if (!data?.code) return;
+    try {
+      await navigator.clipboard.writeText(data.code);
+      showAlert(`Code gecopierd`, 'success', 3000); 
+    } catch {
+      prompt("Kopieer de code:", data.code);
+    }
+  }
 
-	function printPage() {
-		window.print();
-	}
+  function printPage() {
+    window.print();
+  }
 
-	function safeParse(raw: string | null): ScreenData | null {
-		if (!raw) return null;
-		try {
-			const obj = JSON.parse(raw);
-			if (!obj?.className || !obj?.code) return null;
-			return {
-				className: String(obj.className),
-				code: String(obj.code),
-				expiresAt: obj.expiresAt ? String(obj.expiresAt) : null
-			};
-		} catch {
-			return null;
-		}
-	}
+  onMount(() => {
+    // Try sessionStorage first (recommended)
+    const raw = sessionStorage.getItem("code_screen_data");
+    if (raw) {
+      data = JSON.parse(raw);
+    } else {
+      // fallback from query params (if you use them)
+      const p = get(page).url.searchParams;
+      const className = p.get("className");
+      const code = p.get("code");
+      const expiresAt = p.get("expiresAt");
+      if (className && code) {
+        data = { className, code, expiresAt };
+      }
+    }
 
-	onMount(() => {
-		// ✅ FIX: generator stores in localStorage, so read that first
-		data =
-			safeParse(localStorage.getItem('code_screen_data')) ||
-			safeParse(sessionStorage.getItem('code_screen_data')) ||
-			null;
+    tick();
+    interval = setInterval(tick, 1000);
 
-		// fallback from query params (optional)
-		if (!data) {
-			const p = get(page).url.searchParams;
-			const className = p.get('className');
-			const code = p.get('code');
-			const expiresAt = p.get('expiresAt');
-			if (className && code) {
-				data = { className, code, expiresAt };
-			}
-		}
-
-		tick();
-		interval = setInterval(tick, 1000);
-
-		return () => clearInterval(interval);
-	});
+    return () => clearInterval(interval);
+  });
 </script>
 
 {#if !data}
