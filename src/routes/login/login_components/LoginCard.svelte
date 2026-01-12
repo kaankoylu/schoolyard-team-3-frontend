@@ -7,7 +7,7 @@
 	// ---------- local "accounts" ----------
 	type LocalAccount = {
 		id: string;
-		role: 'teacher'; 
+		role: 'teacher';
 		name: string;
 		email: string;
 		created_at: number;
@@ -61,7 +61,7 @@
 	let email = '';
 	let class_id: number | '' = ''; // teacher optional only
 	let code = ''; // student required
-	let roleForRegister: 'teacher' = 'teacher'; 
+	let roleForRegister: 'teacher' = 'teacher';
 
 	let msg = '';
 	let err = '';
@@ -97,7 +97,7 @@
 				}
 			}
 		} catch {
-			
+			// ignore
 		}
 	});
 
@@ -113,7 +113,7 @@
 		msg = 'Cleared local session.';
 	}
 
-	
+	// (kept if you still use it elsewhere)
 	async function resolveClassIdByCode(codeStr: string): Promise<number> {
 		const url = new URL('/api/class-codes/resolve', window.location.origin);
 		url.searchParams.set('code', codeStr);
@@ -160,7 +160,7 @@
 			});
 
 			if (!res.ok) {
-				const body = await res.json();
+				const body = await res.json().catch(() => null);
 				throw new Error(body?.message ?? 'Invalid or expired code.');
 			}
 
@@ -274,7 +274,9 @@
 				<button class="btn" type="button" on:click={loginStudent} disabled={verifyingCode}>
 					{verifyingCode ? 'Checking…' : 'Login'}
 				</button>
-				<button class="btn ghost" type="button" on:click={logout} disabled={verifyingCode}>Clear</button>
+				<button class="btn ghost" type="button" on:click={logout} disabled={verifyingCode}>
+					Clear
+				</button>
 			</div>
 		</div>
 
@@ -323,8 +325,6 @@
 			<div class="actions">
 				<button class="btn" type="button" on:click={registerLocalAccount}>Create</button>
 			</div>
-
-			
 		</div>
 	{/if}
 
