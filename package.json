@@ -13,7 +13,8 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run"
+		"test": "npm run test:unit -- --run",
+		"test:coverage": "vitest run --coverage"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
@@ -27,6 +28,7 @@
 		"@tailwindcss/vite": "^4.1.14",
 		"@types/node": "^22",
 		"@vitest/browser-playwright": "^4.0.5",
+		"@vitest/coverage-v8": "^4.0.10",
 		"eslint": "^9.38.0",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.12.4",
