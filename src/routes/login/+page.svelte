@@ -58,7 +58,7 @@
 		padding: 48px 16px;
 		background:
 			radial-gradient(1200px 600px at 20% 10%, rgba(59, 130, 246, 0.12), transparent 60%),
-			radial-gradient(1000px 500px at 80% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
+			radial-gradient(1000px 500px at 80% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
 			linear-gradient(180deg, #f7fbff 0%, #f3f7ff 40%, #f6fff9 100%);
 	}
 
@@ -115,7 +115,10 @@
 		font-size: 13px;
 		color: rgba(15, 23, 42, 0.68);
 		cursor: pointer;
-		transition: transform 120ms ease, background-color 160ms ease, color 160ms ease,
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease,
+			color 160ms ease,
 			box-shadow 160ms ease;
 	}
 
@@ -137,7 +140,7 @@
 		background: #ffffff;
 		color: #0f172a;
 		box-shadow:
-			0 10px 24px rgba(15, 23, 42, 0.10),
+			0 10px 24px rgba(15, 23, 42, 0.1),
 			inset 0 1px 0 rgba(255, 255, 255, 0.9);
 	}
 
@@ -146,7 +149,7 @@
 		border-radius: 20px;
 		background: rgba(255, 255, 255, 0.9);
 		border: 1px solid rgba(15, 23, 42, 0.08);
-		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.10);
+		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.1);
 		padding: 14px;
 	}
 

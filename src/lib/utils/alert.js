@@ -7,11 +7,11 @@ import { alertStore } from '$lib/stores/alert';
  * @param {number} [duration=0] - duur in ms waarna de alert automatisch sluit
  */
 export function showAlert(message, type = 'info', duration = 0) {
-  alertStore.set({ show: true, message, type });
+	alertStore.set({ show: true, message, type });
 
-  if (duration > 0) {
-    setTimeout(() => {
-      alertStore.set({ show: false, message: '', type: 'info' });
-    }, duration);
-  }
+	if (duration > 0) {
+		setTimeout(() => {
+			alertStore.set({ show: false, message: '', type: 'info' });
+		}, duration);
+	}
 }

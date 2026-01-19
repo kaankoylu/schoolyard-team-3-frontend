@@ -885,9 +885,8 @@
 		gap: 2px;
 		background: transparent;
 		position: relative;
-		z-index: 2; 
+		z-index: 2;
 	}
-
 
 	.design-area::after {
 		content: '';
@@ -899,7 +898,7 @@
 			linear-gradient(90deg, rgba(0, 0, 0, 0.25) 1px, transparent 1px);
 		background-size: calc(100% / var(--cols)) calc(100% / var(--rows));
 		pointer-events: none;
-		z-index: 1; 
+		z-index: 1;
 	}
 
 	/* make each cell slightly visible too */

@@ -154,7 +154,12 @@
 		place-items: center;
 		padding: 24px;
 		background: linear-gradient(180deg, #f0fdf4, #ecfeff);
-		font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			Segoe UI,
+			Roboto,
+			sans-serif;
 	}
 
 	.card {

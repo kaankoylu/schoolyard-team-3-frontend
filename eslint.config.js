@@ -1,27 +1,44 @@
-import prettier from 'eslint-config-prettier';
-import { fileURLToPath } from 'node:url';
-import { includeIgnoreFile } from '@eslint/compat';
 import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
 import svelte from 'eslint-plugin-svelte';
-import globals from 'globals';
-import svelteConfig from './svelte.config.js';
+import svelteParser from 'svelte-eslint-parser';
+import tsParser from '@typescript-eslint/parser';
 
-const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
-
-/** @type {import('eslint').Linter.Config[]} */
 export default [
-	includeIgnoreFile(gitignorePath),
-	js.configs.recommended,
-	...svelte.configs.recommended,
-	prettier,
-	...svelte.configs.prettier,
-	{
-		languageOptions: {
-			globals: { ...globals.browser, ...globals.node }
-		}
-	},
-	{
-		files: ['**/*.svelte', '**/*.svelte.js'],
-		languageOptions: { parserOptions: { svelteConfig } }
-	}
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+
+  // Svelte files (with TypeScript inside <script lang="ts">)
+  {
+    files: ['**/*.svelte'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: {
+        parser: tsParser
+      }
+    },
+    plugins: {
+      svelte
+    },
+    rules: {
+      // SvelteKit commonly uses normal <a href="/route">, this rule is too strict
+      'svelte/no-navigation-without-resolve': 'off'
+    }
+  },
+
+  // TS files
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parser: tsParser
+    }
+  },
+
+  // General tweaks (optional, keeps noise low)
+  {
+    rules: {
+      'no-unused-vars': 'warn',
+      'no-console': 'off'
+    }
+  }
 ];

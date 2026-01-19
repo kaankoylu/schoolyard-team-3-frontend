@@ -75,7 +75,7 @@
 		classes
 			.map((c) => {
 				const code = (c.active_code?.code ?? c.activeCode?.code ?? '').trim();
-				return code ? [code.toUpperCase(), c] as const : null;
+				return code ? ([code.toUpperCase(), c] as const) : null;
 			})
 			.filter(Boolean) as Array<readonly [string, SchoolClass]>
 	);
@@ -89,7 +89,9 @@
 	async function loadClasses() {
 		classesLoading = true;
 		try {
-			const res = await fetch(`${API_BASE}/api/classes`, { headers: { Accept: 'application/json' } });
+			const res = await fetch(`${API_BASE}/api/classes`, {
+				headers: { Accept: 'application/json' }
+			});
 			if (!res.ok) throw new Error(`Kan klassen niet laden (${res.status})`);
 			const data = await res.json();
 			classes = Array.isArray(data) ? data : [];
@@ -128,11 +130,13 @@
 		error = '';
 
 		try {
-			const res = await fetch(`${API_BASE}/api/designs`, { headers: { Accept: 'application/json' } });
+			const res = await fetch(`${API_BASE}/api/designs`, {
+				headers: { Accept: 'application/json' }
+			});
 			if (!res.ok) throw new Error(`Kan ontwerpen niet laden (${res.status})`);
 
 			const data = await res.json();
-			const raw = Array.isArray(data) ? data : data.data ?? [];
+			const raw = Array.isArray(data) ? data : (data.data ?? []);
 
 			designs = raw.map((d: Design) => {
 				const inferred = inferClassForDesign(d);
@@ -217,22 +221,20 @@
 		}
 	}
 
-
-	
-
 	function shortDate(date?: string) {
 		if (!date) return '';
 		return new Date(date).toLocaleString();
 	}
 </script>
 
-
 <div class="page">
 	<div class="container">
 		<header class="topbar">
 			<div class="topbarLeft">
 				<h1 class="title">Studenten ontwerpen</h1>
-				<p class="subtitle">Overzicht van alle opgeslagen ontwerpen, laat snelle kind vriendelijke feedback achter.</p>
+				<p class="subtitle">
+					Overzicht van alle opgeslagen ontwerpen, laat snelle kind vriendelijke feedback achter.
+				</p>
 
 				<!-- ✅ FILTER BAR -->
 				<div class="filters">
@@ -269,9 +271,10 @@
 				<div class="emptyTitle">Er zijn nog geen ontwerpen</div>
 				<div class="emptyText">
 					{#if selectedClassId === 'all'}
-						Vraag de studenten om hun ontwerpen op te slaan, vervolgens kun jij ze automatisch hier bekijken.
+						Vraag de studenten om hun ontwerpen op te slaan, vervolgens kun jij ze automatisch hier
+						bekijken.
 					{:else}
-						Er zijn nog geen ontwerpen voor deze klas. 
+						Er zijn nog geen ontwerpen voor deze klas.
 					{/if}
 				</div>
 			</div>
@@ -315,7 +318,7 @@
 								<div class="badges">
 									<span class="badge">#{design.id}</span>
 									{#if design.feedback}
-										<span class="badge ok">Feedback	 ✔</span>
+										<span class="badge ok">Feedback ✔</span>
 									{/if}
 								</div>
 							</div>
@@ -393,9 +396,14 @@
 		min-height: 100vh;
 		padding: 28px 16px 44px;
 		background:
-			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
-			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
+			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
+			linear-gradient(
+				180deg,
+				rgba(241, 245, 249, 0.65) 0%,
+				rgba(248, 250, 252, 1) 55%,
+				rgba(241, 245, 249, 0.7) 100%
+			);
 	}
 
 	.container {
@@ -472,7 +480,7 @@
 		font-weight: 900;
 		color: rgba(15, 23, 42, 0.72);
 		background: rgba(255, 255, 255, 0.82);
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 	}
 
 	.backlink {
@@ -481,11 +489,13 @@
 		text-decoration: none;
 		padding: 8px 10px;
 		border-radius: 10px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.6);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
-		transition: transform 120ms ease, background-color 160ms ease;
+		transition:
+			transform 120ms ease,
+			background-color 160ms ease;
 	}
 	.backlink:hover {
 		background: rgba(255, 255, 255, 0.9);
@@ -519,15 +529,17 @@
 		flex-direction: column;
 		overflow: hidden;
 		border-radius: 18px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.92);
 		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
-		transition: transform 140ms ease, box-shadow 160ms ease;
+		transition:
+			transform 140ms ease,
+			box-shadow 160ms ease;
 	}
 
 	.card:hover {
 		transform: translateY(-2px);
-		box-shadow: 0 18px 50px rgba(15, 23, 42, 0.10);
+		box-shadow: 0 18px 50px rgba(15, 23, 42, 0.1);
 	}
 
 	.preview {
@@ -548,7 +560,7 @@
 		inset: 0;
 		background:
 			linear-gradient(180deg, rgba(15, 23, 42, 0.06) 0%, rgba(15, 23, 42, 0.12) 100%),
-			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.20), transparent 60%),
+			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.2), transparent 60%),
 			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.14), transparent 55%);
 	}
 
@@ -588,7 +600,7 @@
 		font-weight: 900;
 		color: rgba(15, 23, 42, 0.78);
 		background: rgba(255, 255, 255, 0.82);
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
 	}
@@ -634,7 +646,7 @@
 
 	.metaKey {
 		font-weight: 900;
-		color: rgba(15, 23, 42, 0.70);
+		color: rgba(15, 23, 42, 0.7);
 		margin-right: 6px;
 	}
 
@@ -651,7 +663,7 @@
 		padding: 4px 10px;
 		font-size: 11px;
 		font-weight: 900;
-		background: rgba(16, 185, 129, 0.10);
+		background: rgba(16, 185, 129, 0.1);
 		color: rgba(4, 120, 87, 1);
 		border: 1px solid rgba(16, 185, 129, 0.22);
 	}
@@ -676,17 +688,19 @@
 		font-size: 12px;
 		line-height: 1.4;
 		background: rgba(255, 255, 255, 0.92);
-		transition: border-color 140ms ease, box-shadow 140ms ease;
+		transition:
+			border-color 140ms ease,
+			box-shadow 140ms ease;
 	}
 	.textarea:focus {
 		outline: none;
 		border-color: rgba(16, 185, 129, 0.45);
-		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
 	}
 
 	.hint {
 		font-size: 11px;
-		color: rgba(15, 23, 42, 0.50);
+		color: rgba(15, 23, 42, 0.5);
 	}
 
 	.actions {
@@ -709,7 +723,10 @@
 		font-size: 12px;
 		font-weight: 900;
 		cursor: pointer;
-		transition: transform 120ms ease, filter 160ms ease, box-shadow 160ms ease;
+		transition:
+			transform 120ms ease,
+			filter 160ms ease,
+			box-shadow 160ms ease;
 		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
 	}
 	.btnPrimary:hover {
@@ -753,7 +770,7 @@
 	}
 	.state.empty {
 		border-style: solid;
-		border-color: rgba(15, 23, 42, 0.10);
+		border-color: rgba(15, 23, 42, 0.1);
 	}
 	.emptyTitle {
 		font-weight: 900;
@@ -770,7 +787,7 @@
 		background: linear-gradient(
 			90deg,
 			rgba(15, 23, 42, 0.06),
-			rgba(15, 23, 42, 0.10),
+			rgba(15, 23, 42, 0.1),
 			rgba(15, 23, 42, 0.06)
 		);
 		background-size: 200% 100%;

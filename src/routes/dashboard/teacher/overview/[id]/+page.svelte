@@ -4,7 +4,6 @@
 	import { page } from '$app/stores';
 	import { showAlert } from '$lib/utils/alert';
 
-	
 	const API_BASE = '';
 	const ASSET_BASE = '';
 
@@ -84,7 +83,9 @@
 	}
 
 	function getClassName(d: Design) {
-		return d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Klas #${d.class_id}` : '—');
+		return (
+			d.schoolClass?.name ?? d.school_class?.name ?? (d.class_id ? `Klas #${d.class_id}` : '—')
+		);
 	}
 
 	function groupAssetsByLabel(items: PlacedAsset[]) {
@@ -223,13 +224,13 @@
 		}
 	}
 
-	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
+	const DEFAULT_BG =
+		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
 	$: previewBg = normalizeUrl(design?.backgroundImage ?? DEFAULT_BG);
 	$: placedList = (design?.placedAssets ?? []) as PlacedAsset[];
 	$: grouped = groupAssetsByLabel(placedList);
 </script>
-
 
 <div class="page">
 	<div class="container">
