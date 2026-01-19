@@ -16,32 +16,36 @@ export default [
 			'@typescript-eslint': tsPlugin
 		},
 		rules: {
-			...tsPlugin.configs.recommended.rules
+			...tsPlugin.configs.recommended.rules,
+
+			complexity: ['warn', 10]
 		}
 	},
 
 	{
-		files: ['**/*.svelte'],
-		languageOptions: {
-			parser: svelteParser,
-			parserOptions: {
-				parser: tsParser
-			}
-		},
-		plugins: {
-			svelte,
-			'@typescript-eslint': tsPlugin
-		},
-		rules: {
-			...tsPlugin.configs.recommended.rules,
-
-			// SvelteKit uses normal <a href="/..."> a lot
-			'svelte/no-navigation-without-resolve': 'off',
-
-			'@typescript-eslint/no-unused-vars': 'warn',
-			'no-unused-vars': 'off'
+	files: ['**/*.svelte'],
+	languageOptions: {
+		parser: svelteParser,
+		parserOptions: {
+			parser: tsParser
 		}
 	},
+	plugins: {
+		svelte,
+		'@typescript-eslint': tsPlugin
+	},
+	rules: {
+		...tsPlugin.configs.recommended.rules,
+
+		//  Cyclomatic complexity metric
+		complexity: ['warn', 10],
+
+		'svelte/no-navigation-without-resolve': 'off',
+		'@typescript-eslint/no-unused-vars': 'warn',
+		'no-unused-vars': 'off'
+	}
+},
+
 
 	// General
 	{
