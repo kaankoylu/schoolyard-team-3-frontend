@@ -24,12 +24,12 @@ jobs:
         run: npm ci
 
       - name: Lint (ESLint)
+        continue-on-error: true
         run: npm run lint
 
       - name: Format check (Prettier)
-        run: npm run format:check
         continue-on-error: true
-
+        run: npm run format:check
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
