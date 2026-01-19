@@ -2,7 +2,6 @@
 	import DashboardNavigationCard from '$lib/components/DashboardNavigationCard.svelte';
 	import ProfilePicture from '$lib/components/ProfilePicture.svelte';
 	import DesigningIcon from '$lib/components/DesigningIcon.svelte';
-	
 </script>
 
 <img
