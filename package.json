@@ -14,9 +14,8 @@
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run",
-		"test:coverage": "vitest run --coverage"
-		,"format:check": "prettier --check ."
-
+		"test:coverage": "vitest run --coverage",
+		"format:check": "prettier --check ."
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.4.0",
