@@ -1,44 +1,55 @@
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 import svelte from 'eslint-plugin-svelte';
 import svelteParser from 'svelte-eslint-parser';
-import tsParser from '@typescript-eslint/parser';
 
 export default [
-	js.configs.recommended,
-	...tseslint.configs.recommended,
+  js.configs.recommended,
 
-	// Svelte files (with TypeScript inside <script lang="ts">)
-	{
-		files: ['**/*.svelte'],
-		languageOptions: {
-			parser: svelteParser,
-			parserOptions: {
-				parser: tsParser
-			}
-		},
-		plugins: {
-			svelte
-		},
-		rules: {
-			// SvelteKit commonly uses normal <a href="/route">, this rule is too strict
-			'svelte/no-navigation-without-resolve': 'off'
-		}
-	},
 
-	// TS files
-	{
-		files: ['**/*.ts'],
-		languageOptions: {
-			parser: tsParser
-		}
-	},
+  {
+    files: ['**/*.ts'],
+    languageOptions: {
+      parser: tsParser
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin
+    },
+    rules: {
+      ...tsPlugin.configs.recommended.rules
+    }
+  },
 
-	// General tweaks (optional, keeps noise low)
-	{
-		rules: {
-			'no-unused-vars': 'warn',
-			'no-console': 'off'
-		}
-	}
+
+  {
+    files: ['**/*.svelte'],
+    languageOptions: {
+      parser: svelteParser,
+      parserOptions: {
+        parser: tsParser
+      }
+    },
+    plugins: {
+      svelte,
+      '@typescript-eslint': tsPlugin
+    },
+    rules: {
+      ...tsPlugin.configs.recommended.rules,
+
+      // SvelteKit uses normal <a href="/..."> a lot
+      'svelte/no-navigation-without-resolve': 'off',
+
+      
+      '@typescript-eslint/no-unused-vars': 'warn',
+      'no-unused-vars': 'off'
+    }
+  },
+
+  // General
+  {
+    rules: {
+      'no-console': 'off'
+    }
+  }
 ];
