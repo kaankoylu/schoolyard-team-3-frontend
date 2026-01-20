@@ -279,7 +279,6 @@
 				</button>
 			</div>
 		</div>
-
 	{:else if mode === 'teacher'}
 		<h2 class="h">Teacher login</h2>
 
@@ -291,7 +290,12 @@
 
 			<label class="field">
 				<span>Email</span>
-				<input class="input" bind:value={email} placeholder="teacher@example.com" autocomplete="email" />
+				<input
+					class="input"
+					bind:value={email}
+					placeholder="teacher@example.com"
+					autocomplete="email"
+				/>
 			</label>
 
 			<div class="actions">
@@ -299,7 +303,6 @@
 				<button class="btn ghost" type="button" on:click={logout}>Clear</button>
 			</div>
 		</div>
-
 	{:else}
 		<h2 class="h">Create account </h2>
 		
@@ -319,7 +322,12 @@
 
 			<label class="field">
 				<span>Email</span>
-				<input class="input" bind:value={email} placeholder="name@example.com" autocomplete="email" />
+				<input
+					class="input"
+					bind:value={email}
+					placeholder="name@example.com"
+					autocomplete="email"
+				/>
 			</label>
 
 			<div class="actions">
@@ -337,25 +345,53 @@
 </div>
 
 <style>
-	.card { padding: 4px; }
+	.card {
+		padding: 4px;
+	}
 
-	.h { margin: 6px 2px 2px; font-size: 16px; font-weight: 900; color: #0f172a; }
-	.p { margin: 0 2px 12px; font-size: 12px; color: rgba(15,23,42,0.6); }
+	.h {
+		margin: 6px 2px 2px;
+		font-size: 16px;
+		font-weight: 900;
+		color: #0f172a;
+	}
+	.p {
+		margin: 0 2px 12px;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.6);
+	}
 
-	.grid { display: grid; gap: 10px; }
+	.grid {
+		display: grid;
+		gap: 10px;
+	}
 
-	.field { display: grid; gap: 6px; font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.65); }
+	.field {
+		display: grid;
+		gap: 6px;
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.65);
+	}
 
 	.input {
-		border: 1px solid rgba(15,23,42,0.14);
+		border: 1px solid rgba(15, 23, 42, 0.14);
 		border-radius: 14px;
 		padding: 10px 10px;
 		font-size: 13px;
-		background: rgba(255,255,255,0.95);
+		background: rgba(255, 255, 255, 0.95);
 	}
-	.input:focus { outline: none; border-color: rgba(16,185,129,0.45); box-shadow: 0 0 0 3px rgba(16,185,129,0.18); }
+	.input:focus {
+		outline: none;
+		border-color: rgba(16, 185, 129, 0.45);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18);
+	}
 
-	.actions { display: flex; gap: 10px; margin-top: 2px; }
+	.actions {
+		display: flex;
+		gap: 10px;
+		margin-top: 2px;
+	}
 
 	.btn {
 		flex: 1;
@@ -369,7 +405,12 @@
 		cursor: pointer;
 		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
 	}
-	.btn.ghost { border: 1px solid rgba(15,23,42,0.12); background: rgba(248,250,252,0.95); color: rgba(15,23,42,0.85); box-shadow: 0 12px 24px rgba(15,23,42,0.08); }
+	.btn.ghost {
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(248, 250, 252, 0.95);
+		color: rgba(15, 23, 42, 0.85);
+		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+	}
 
 	.alert {
 		margin-top: 12px;
@@ -377,15 +418,36 @@
 		padding: 10px;
 		font-weight: 950;
 		font-size: 12px;
-		border: 1px solid rgba(15,23,42,0.10);
-		background: rgba(255,255,255,0.8);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(255, 255, 255, 0.8);
 	}
-	.alert.error { border-color: rgba(239,68,68,0.22); background: rgba(239,68,68,0.06); color: rgba(185,28,28,1); }
-	.alert.ok { border-color: rgba(16,185,129,0.22); background: rgba(16,185,129,0.06); color: rgba(15,118,110,1); }
+	.alert.error {
+		border-color: rgba(239, 68, 68, 0.22);
+		background: rgba(239, 68, 68, 0.06);
+		color: rgba(185, 28, 28, 1);
+	}
+	.alert.ok {
+		border-color: rgba(16, 185, 129, 0.22);
+		background: rgba(16, 185, 129, 0.06);
+		color: rgba(15, 118, 110, 1);
+	}
 
-	.list { margin-top: 6px; border-top: 1px solid rgba(15,23,42,0.08); padding-top: 10px; }
-	.listTitle { font-size: 12px; font-weight: 950; color: rgba(15,23,42,0.7); margin-bottom: 8px; }
-	.empty { font-size: 12px; color: rgba(15,23,42,0.55); font-weight: 900; }
+	.list {
+		margin-top: 6px;
+		border-top: 1px solid rgba(15, 23, 42, 0.08);
+		padding-top: 10px;
+	}
+	.listTitle {
+		font-size: 12px;
+		font-weight: 950;
+		color: rgba(15, 23, 42, 0.7);
+		margin-bottom: 8px;
+	}
+	.empty {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+		font-weight: 900;
+	}
 
 	.row {
 		display: flex;
@@ -394,29 +456,41 @@
 		gap: 10px;
 		padding: 10px;
 		border-radius: 14px;
-		border: 1px solid rgba(15,23,42,0.10);
-		background: rgba(248,250,252,0.9);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(248, 250, 252, 0.9);
 		margin-bottom: 8px;
 	}
-	.rowMain { min-width: 0; }
-	.rowTop { font-weight: 950; font-size: 12px; }
-	.rowSub { font-size: 11px; color: rgba(15,23,42,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
+	.rowMain {
+		min-width: 0;
+	}
+	.rowTop {
+		font-weight: 950;
+		font-size: 12px;
+	}
+	.rowSub {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.55);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 240px;
+	}
 	.tag {
 		margin-left: 6px;
 		font-size: 10px;
 		font-weight: 950;
 		padding: 2px 8px;
 		border-radius: 999px;
-		border: 1px solid rgba(59,130,246,0.18);
-		background: rgba(59,130,246,0.10);
-		color: rgba(30,64,175,0.95);
+		border: 1px solid rgba(59, 130, 246, 0.18);
+		background: rgba(59, 130, 246, 0.1);
+		color: rgba(30, 64, 175, 0.95);
 	}
 
 	.miniDanger {
 		border-radius: 12px;
-		border: 1px solid rgba(239,68,68,0.22);
-		background: rgba(239,68,68,0.06);
-		color: rgba(185,28,28,1);
+		border: 1px solid rgba(239, 68, 68, 0.22);
+		background: rgba(239, 68, 68, 0.06);
+		color: rgba(185, 28, 28, 1);
 		font-weight: 950;
 		padding: 8px 10px;
 		cursor: pointer;

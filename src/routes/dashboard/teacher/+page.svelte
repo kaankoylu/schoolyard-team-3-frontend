@@ -1,7 +1,7 @@
 <script>
-    import ProfilePicture from "$lib/components/ProfilePicture.svelte";
-    import DashboardNavigationCard from "$lib/components/DashboardNavigationCard.svelte";
-    import GenerateCodeCard from "$lib/components/GenerateCodeCard.svelte";
+	import ProfilePicture from '$lib/components/ProfilePicture.svelte';
+	import DashboardNavigationCard from '$lib/components/DashboardNavigationCard.svelte';
+	import GenerateCodeCard from '$lib/components/GenerateCodeCard.svelte';
 </script>
 
 <div class="bg-green-200">
@@ -11,8 +11,8 @@
             <h2 class="text-xl font-semibold">Welcome</h2>
         </div>
 
-        <GenerateCodeCard />
-    </div>
+		<GenerateCodeCard />
+	</div>
 
     <div class="w-full grid grid-cols-2 gird-columns-2 p-6 gap-6">
         <DashboardNavigationCard 

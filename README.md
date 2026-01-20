@@ -18,11 +18,11 @@ With thes components we form a working application rather than a conceptual prot
 
 The purpose of this tool is to support schools in creating greener, more engaging schoolyards by providing a structured, collaborative design environment. The system enables schools to:
 
-* Upload and/or select the schoolyard map used for the design exercise
-* Allow students to design yard layouts using drag-and-drop visual elements
-* Collect, store and manage student submissions
-* Compare, evaluate and combine designs for decision-making
-* Provide structure and inspiration throughout the design process
+- Upload and/or select the schoolyard map used for the design exercise
+- Allow students to design yard layouts using drag-and-drop visual elements
+- Collect, store and manage student submissions
+- Compare, evaluate and combine designs for decision-making
+- Provide structure and inspiration throughout the design process
 
 The result is a digital platform that supports collaboration, creativity and sustainability within education.
 
@@ -32,32 +32,32 @@ The result is a digital platform that supports collaboration, creativity and sus
 
 ## Teacher Functionality
 
-* Upload custom schoolyard templates
-* Generate temporary classroom login codes
-* Review, compare and analyze submitted student designs
-* Organize design competitions between groups
+- Upload custom schoolyard templates
+- Generate temporary classroom login codes
+- Review, compare and analyze submitted student designs
+- Organize design competitions between groups
 
 ## Student Functionality
 
-* Simple, visual design interface
-* Drag-and-drop components (plants, structures, play elements, etc.)
-* Guided interactions suitable for younger students
-* Text based introduction
+- Simple, visual design interface
+- Drag-and-drop components (plants, structures, play elements, etc.)
+- Guided interactions suitable for younger students
+- Text based introduction
 
 ## System-Level Features
 
-* Frontend implemented with SvelteKit
-* Backend API built on Node/Express
-* Unique API gateway 
-* Defined user roles (teacher and student)
-* Modular design engine prepared for future expansion
+- Frontend implemented with SvelteKit
+- Backend API built on Node/Express
+- Unique API gateway
+- Defined user roles (teacher and student)
+- Modular design engine prepared for future expansion
 
 ---
 
 # Target Users
 
-* Teachers guiding schoolyard design projects
-* Students (approximately 7–12 years old) contributing creative ideas
+- Teachers guiding schoolyard design projects
+- Students (approximately 7–12 years old) contributing creative ideas
 
 ---
 
@@ -65,11 +65,11 @@ The result is a digital platform that supports collaboration, creativity and sus
 
 This project originated from a Design Sprint. The team performed:
 
-* User research and interviews with teachers and students
-* Competitive and inspirational analysis
-* Concept sketching and solution exploration
-* Prototyping using Figma and AI-assisted tools
-* User testing with students, teachers and a parent
+- User research and interviews with teachers and students
+- Competitive and inspirational analysis
+- Concept sketching and solution exploration
+- Prototyping using Figma and AI-assisted tools
+- User testing with students, teachers and a parent
 
 User testing results averaged **7.95/10**, validating the concept and guiding improvements.
 

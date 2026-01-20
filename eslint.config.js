@@ -1,27 +1,56 @@
-import prettier from 'eslint-config-prettier';
-import { fileURLToPath } from 'node:url';
-import { includeIgnoreFile } from '@eslint/compat';
 import js from '@eslint/js';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
 import svelte from 'eslint-plugin-svelte';
-import globals from 'globals';
-import svelteConfig from './svelte.config.js';
+import svelteParser from 'svelte-eslint-parser';
 
-const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
-
-/** @type {import('eslint').Linter.Config[]} */
 export default [
-	includeIgnoreFile(gitignorePath),
 	js.configs.recommended,
-	...svelte.configs.recommended,
-	prettier,
-	...svelte.configs.prettier,
+
 	{
+		files: ['**/*.ts'],
 		languageOptions: {
-			globals: { ...globals.browser, ...globals.node }
+			parser: tsParser
+		},
+		plugins: {
+			'@typescript-eslint': tsPlugin
+		},
+		rules: {
+			...tsPlugin.configs.recommended.rules,
+
+			complexity: ['warn', 10]
 		}
 	},
+
 	{
-		files: ['**/*.svelte', '**/*.svelte.js'],
-		languageOptions: { parserOptions: { svelteConfig } }
+	files: ['**/*.svelte'],
+	languageOptions: {
+		parser: svelteParser,
+		parserOptions: {
+			parser: tsParser
+		}
+	},
+	plugins: {
+		svelte,
+		'@typescript-eslint': tsPlugin
+	},
+	rules: {
+		...tsPlugin.configs.recommended.rules,
+
+		//  Cyclomatic complexity metric
+		complexity: ['warn', 10],
+
+		'svelte/no-navigation-without-resolve': 'off',
+		'@typescript-eslint/no-unused-vars': 'warn',
+		'no-unused-vars': 'off'
+	}
+},
+
+
+	// General
+	{
+		rules: {
+			'no-console': 'off'
+		}
 	}
 ];

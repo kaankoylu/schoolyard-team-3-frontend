@@ -2,7 +2,6 @@
 	import DashboardNavigationCard from '$lib/components/DashboardNavigationCard.svelte';
 	import ProfilePicture from '$lib/components/ProfilePicture.svelte';
 	import DesigningIcon from '$lib/components/DesigningIcon.svelte';
-	import RegularButton from '$lib/components/RegularButton.svelte';
 </script>
 
 <img
@@ -41,6 +40,5 @@
 			imagePath="/dashboard/like.png"
 			style="kids"
 		/>
-	
 	</div>
 </div>

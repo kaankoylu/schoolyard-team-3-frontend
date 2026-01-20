@@ -2,12 +2,12 @@ name: Frontend CI
 
 on:
   push:
-    branches: [ main, development ]
+    branches: [main, development]
   pull_request:
-    branches: [ main, development ]
+    branches: [main, development]
 
 jobs:
-  build:
+  build_test:
     runs-on: ubuntu-latest
 
     steps:
@@ -18,9 +18,32 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Lint (ESLint)
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Format check (Prettier)
+        continue-on-error: true
+        run: npm run format:check
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit tests (coverage)
+        run: npm run test:coverage
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage
+          if-no-files-found: ignore
 
       - name: Build app
         run: npm run build
@@ -28,11 +51,7 @@ jobs:
       - name: Notify Microsoft Teams
         if: always()
         run: |
-          STATUS="success"
-          if [ "${{ job.status }}" != "success" ]; then
-            STATUS="failure"
-          fi
-          MESSAGE="{\"text\": \"Frontend CI finished with *$STATUS* on branch *${{ github.ref_name }}*.\"}"
+          MESSAGE="{\"text\": \"Frontend CI finished with *${{ job.status }}* on branch *${{ github.ref_name }}*.\"}"
           curl -H 'Content-Type: application/json' \
                -d "$MESSAGE" \
-               "${{secrets.TEAMS_WEBHOOK_URL}}"
+               "${{ secrets.TEAMS_WEBHOOK_URL }}"
