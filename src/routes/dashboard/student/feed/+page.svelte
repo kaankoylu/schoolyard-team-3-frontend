@@ -1,5 +1,4 @@
 <script lang="ts">
-	
 	import { onMount, onDestroy, tick } from 'svelte';
 
 	/**
@@ -55,7 +54,7 @@
 		likes?: number;
 		dislikes?: number;
 		score?: number;
-		my_reaction?: number | null; 
+		my_reaction?: number | null;
 
 		[key: string]: any;
 	};
@@ -119,23 +118,23 @@
 		}
 	}
 
-	const DEFAULT_BG = '/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
+	const DEFAULT_BG =
+		'/the-top-view-from-above-is-a-map-of-the-city-with-town-infrastructure-vector.jpg';
 
-function normalizeUrl(url?: string | null) {
-	if (!url) return '';
+	function normalizeUrl(url?: string | null) {
+		if (!url) return '';
 
-	const u = String(url).trim();
+		const u = String(url).trim();
 
-	// absolute URL already
-	if (u.startsWith('http://') || u.startsWith('https://')) return u;
+		// absolute URL already
+		if (u.startsWith('http://') || u.startsWith('https://')) return u;
 
-	// normalize to "/..."
-	const path = u.startsWith('/') ? u : `/${u}`;
+		// normalize to "/..."
+		const path = u.startsWith('/') ? u : `/${u}`;
 
-	// same-origin proxy serves /storage and public assets
-	return `${ASSET_BASE}${path}`;
-}
-
+		// same-origin proxy serves /storage and public assets
+		return `${ASSET_BASE}${path}`;
+	}
 
 	function shortDate(date?: string) {
 		return date ? new Date(date).toLocaleString() : '';
@@ -164,11 +163,10 @@ function normalizeUrl(url?: string | null) {
 			? { width: baseHeight, height: baseWidth }
 			: { width: baseWidth, height: baseHeight };
 	}
-function backroll() {
-	history.back();
-}
+	function backroll() {
+		history.back();
+	}
 
-	
 	type AssetRow = { id: number; image_url?: string | null; image?: string | null };
 
 	let assetById: Record<number, string> = {};
@@ -184,7 +182,7 @@ function backroll() {
 			if (!res.ok) throw new Error(`Assets laden mislukt (${res.status})`);
 
 			const data = await res.json();
-			const list: AssetRow[] = Array.isArray(data) ? data : data?.data ?? [];
+			const list: AssetRow[] = Array.isArray(data) ? data : (data?.data ?? []);
 
 			const map: Record<number, string> = {};
 			for (const a of list) {
@@ -203,15 +201,10 @@ function backroll() {
 		}
 	}
 
-	
 	function getPlacedImageUrl(item: PlacedAsset) {
 		// 1) direct fields (if backend includes them)
 		const direct =
-			item.image_url ??
-			item.asset?.image_url ??
-			item.asset?.image ??
-			(item as any)?.image ??
-			null;
+			item.image_url ?? item.asset?.image_url ?? item.asset?.image ?? (item as any)?.image ?? null;
 
 		if (direct) return normalizeUrl(direct) || '/placeholder.png';
 
@@ -337,9 +330,9 @@ function backroll() {
 			url.searchParams.set('limit', '10');
 			const res = await fetch(url.toString(), { headers: { Accept: 'application/json' } });
 			if (!res.ok) throw new Error(`Leaderboard laden mislukt (${res.status})`);
-			const data = await res.json();
-			leaderboard = Array.isArray(data) ? data : [];
-		} catch (e) {
+			const json = await res.json();
+			leaderboard = Array.isArray(json) ? json : (json.data ?? []);
+			} catch (e) {
 			console.error(e);
 			leaderboard = [];
 		} finally {
@@ -374,7 +367,13 @@ function backroll() {
 		const updateLocal = (d: Design) => {
 			const likes = (d.likes ?? 0) + deltaLike;
 			const dislikes = (d.dislikes ?? 0) + deltaDislike;
-			return { ...d, likes, dislikes, score: likes - dislikes, my_reaction: next === 0 ? null : next };
+			return {
+				...d,
+				likes,
+				dislikes,
+				score: likes - dislikes,
+				my_reaction: next === 0 ? null : next
+			};
 		};
 
 		feed = feed.map((d) => (d.id === design.id ? updateLocal(d) : d));
@@ -396,7 +395,13 @@ function backroll() {
 
 			feed = feed.map((d) =>
 				d.id === design.id
-					? { ...d, likes: data.likes, dislikes: data.dislikes, score: data.score, my_reaction: reaction === 0 ? null : reaction }
+					? {
+							...d,
+							likes: data.likes,
+							dislikes: data.dislikes,
+							score: data.score,
+							my_reaction: reaction === 0 ? null : reaction
+						}
 					: d
 			);
 
@@ -417,13 +422,25 @@ function backroll() {
 				if (d.id !== design.id) return d;
 				const likes = (d.likes ?? 0) - deltaLike;
 				const dislikes = (d.dislikes ?? 0) - deltaDislike;
-				return { ...d, likes, dislikes, score: likes - dislikes, my_reaction: prev === 0 ? null : prev };
+				return {
+					...d,
+					likes,
+					dislikes,
+					score: likes - dislikes,
+					my_reaction: prev === 0 ? null : prev
+				};
 			});
 
 			if (focusDesign?.id === design.id) {
 				const likes = (focusDesign.likes ?? 0) - deltaLike;
 				const dislikes = (focusDesign.dislikes ?? 0) - deltaDislike;
-				focusDesign = { ...focusDesign, likes, dislikes, score: likes - dislikes, my_reaction: prev === 0 ? null : prev };
+				focusDesign = {
+					...focusDesign,
+					likes,
+					dislikes,
+					score: likes - dislikes,
+					my_reaction: prev === 0 ? null : prev
+				};
 			}
 
 			alert('Like/dislike opslaan mislukt.');
@@ -506,7 +523,6 @@ function backroll() {
 			loading = true;
 			error = '';
 
-			
 			await fetchAssets();
 
 			await Promise.all([fetchLeaderboard(), fetchFeed(true)]);
@@ -519,7 +535,6 @@ function backroll() {
 
 		await tick();
 	});
-
 
 	$: if (sentinelEl) {
 		obs?.disconnect();
@@ -539,7 +554,6 @@ function backroll() {
 		document.body.style.overflow = '';
 	});
 </script>
-
 
 <div class="page">
 	<header class="topbar">
@@ -569,7 +583,12 @@ function backroll() {
 				<div class="panel">
 					<div class="panelHeader">
 						<h2>🏆 Top designs</h2>
-						<button class="miniBtn" type="button" on:click={fetchLeaderboard} disabled={leaderboardLoading}>
+						<button
+							class="miniBtn"
+							type="button"
+							on:click={fetchLeaderboard}
+							disabled={leaderboardLoading}
+						>
 							{leaderboardLoading ? '…' : 'Refresh'}
 						</button>
 					</div>
@@ -657,7 +676,12 @@ function backroll() {
 						{/each}
 					</datalist>
 
-					<button class="fBtn" type="button" on:click={resetFilters} disabled={filterClass === 'all' && !filterUser.trim()}>
+					<button
+						class="fBtn"
+						type="button"
+						on:click={resetFilters}
+						disabled={filterClass === 'all' && !filterUser.trim()}
+					>
 						Reset
 					</button>
 				</div>
@@ -696,7 +720,12 @@ function backroll() {
 								<div class="igTime">{d.created_at ? shortDate(d.created_at) : ''}</div>
 							</div>
 
-							<button class="igMedia" type="button" on:click={() => openFocus(d)} aria-label="Open design">
+							<button
+								class="igMedia"
+								type="button"
+								on:click={() => openFocus(d)}
+								aria-label="Open design"
+							>
 								<div
 									class="designGrid"
 									style={`--rows:${d.rows ?? 18}; --cols:${d.cols ?? 22}; background-image:url('${normalizeUrl(
@@ -706,7 +735,7 @@ function backroll() {
 									<div class="overlay" aria-hidden="true"></div>
 
 									{#if (d.placedAssets ?? []).length > 0}
-										{#each (d.placedAssets ?? []) as item (item.instanceId ?? `${item.row}-${item.col}`)}
+										{#each d.placedAssets ?? [] as item (item.instanceId ?? `${item.row}-${item.col}`)}
 											<div
 												class="placed"
 												style={`grid-column:${(item.col ?? 0) + 1} / span ${getRotatedSize(item).width};
@@ -718,7 +747,8 @@ function backroll() {
 													src={getPlacedImageUrl(item)}
 													alt={item.label ?? item.asset?.label ?? 'Asset'}
 													loading="lazy"
-													on:error={(e) => ((e.currentTarget as HTMLImageElement).src = '/placeholder.png')}
+													on:error={(e) =>
+														((e.currentTarget as HTMLImageElement).src = '/placeholder.png')}
 												/>
 											</div>
 										{/each}
@@ -747,17 +777,20 @@ function backroll() {
 									👎
 								</button>
 
-								<button class="igAction" type="button" on:click={() => openComments(d.id)}>💬</button>
+								<button class="igAction" type="button" on:click={() => openComments(d.id)}
+									>💬</button
+								>
 
 								<div class="igSpacer"></div>
 
-								<button class="igAction soft" type="button" on:click={() => openFocus(d)}>🔍</button>
+								<button class="igAction soft" type="button" on:click={() => openFocus(d)}>🔍</button
+								>
 							</div>
 
 							<div class="igMeta">
 								<div class="igCounts">
-									<strong>{d.likes ?? 0}</strong> likes • <strong>{d.dislikes ?? 0}</strong> dislikes •
-									score <strong>{d.score ?? ((d.likes ?? 0) - (d.dislikes ?? 0))}</strong>
+									<strong>{d.likes ?? 0}</strong> likes • <strong>{d.dislikes ?? 0}</strong>
+									dislikes • score <strong>{d.score ?? (d.likes ?? 0) - (d.dislikes ?? 0)}</strong>
 								</div>
 
 								{#if d.feedback}
@@ -791,6 +824,8 @@ function backroll() {
 	{#if focusOpen && focusDesign}
 		<div class="focusBackdrop" on:click={closeFocus}></div>
 
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="focusModal" on:click|stopPropagation>
 			<div class="focusHeader">
 				<div class="focusTitle">
@@ -816,7 +851,7 @@ function backroll() {
 					<div class="overlay" aria-hidden="true"></div>
 
 					{#if (focusDesign.placedAssets ?? []).length > 0}
-						{#each (focusDesign.placedAssets ?? []) as item (item.instanceId ?? `${item.row}-${item.col}`)}
+						{#each focusDesign.placedAssets ?? [] as item (item.instanceId ?? `${item.row}-${item.col}`)}
 							<div
 								class="placed"
 								style={`grid-column:${(item.col ?? 0) + 1} / span ${getRotatedSize(item).width};
@@ -862,7 +897,9 @@ function backroll() {
 				</button>
 
 				<div class="focusScore">
-					Score: <strong>{focusDesign.score ?? ((focusDesign.likes ?? 0) - (focusDesign.dislikes ?? 0))}</strong>
+					Score: <strong
+						>{focusDesign.score ?? (focusDesign.likes ?? 0) - (focusDesign.dislikes ?? 0)}</strong
+					>
 				</div>
 			</div>
 
@@ -876,6 +913,8 @@ function backroll() {
 	{/if}
 
 	{#if commentsOpen}
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="drawerBackdrop" on:click={closeComments}></div>
 
 		<aside class="drawer" on:click|stopPropagation>
@@ -909,7 +948,12 @@ function backroll() {
 								—
 							{/if}
 						</div>
-						<button class="sendBtn" type="button" disabled={postingComment || !newComment.trim()} on:click={postComment}>
+						<button
+							class="sendBtn"
+							type="button"
+							disabled={postingComment || !newComment.trim()}
+							on:click={postComment}
+						>
 							{postingComment ? 'Plaatsen…' : 'Plaats'}
 						</button>
 					</div>
@@ -941,15 +985,17 @@ function backroll() {
 </div>
 
 <style>
-
-
-
 	.page {
 		min-height: 100vh;
 		background:
-			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.10), transparent 55%),
-			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.10), transparent 55%),
-			linear-gradient(180deg, rgba(241, 245, 249, 0.65) 0%, rgba(248, 250, 252, 1) 55%, rgba(241, 245, 249, 0.7) 100%);
+			radial-gradient(900px 520px at 15% 10%, rgba(59, 130, 246, 0.1), transparent 55%),
+			radial-gradient(900px 520px at 90% 0%, rgba(34, 197, 94, 0.1), transparent 55%),
+			linear-gradient(
+				180deg,
+				rgba(241, 245, 249, 0.65) 0%,
+				rgba(248, 250, 252, 1) 55%,
+				rgba(241, 245, 249, 0.7) 100%
+			);
 		color: #0f172a;
 	}
 
@@ -963,24 +1009,41 @@ function backroll() {
 		gap: 12px;
 		padding: 12px 14px;
 		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-		background: rgba(255, 255, 255, 0.70);
+		background: rgba(255, 255, 255, 0.7);
 		backdrop-filter: blur(10px);
 		-webkit-backdrop-filter: blur(10px);
 	}
 
-	.brand { display: flex; gap: 10px; align-items: center; }
+	.brand {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+	}
 	.logo {
-		width: 34px; height: 34px;
+		width: 34px;
+		height: 34px;
 		border-radius: 12px;
-		display: grid; place-items: center;
+		display: grid;
+		place-items: center;
 		background: rgba(16, 185, 129, 0.12);
-		border: 1px solid rgba(16, 185, 129, 0.20);
+		border: 1px solid rgba(16, 185, 129, 0.2);
 		font-weight: 900;
 	}
-	.brandTitle { font-weight: 950; letter-spacing: -0.02em; }
-	.brandSub { font-size: 12px; color: rgba(15, 23, 42, 0.55); }
+	.brandTitle {
+		font-weight: 950;
+		letter-spacing: -0.02em;
+	}
+	.brandSub {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
-	.me { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+	.me {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
 	.pill {
 		display: inline-flex;
 		align-items: center;
@@ -988,8 +1051,8 @@ function backroll() {
 		border-radius: 999px;
 		font-size: 12px;
 		font-weight: 900;
-		background: rgba(255,255,255,0.85);
-		border: 1px solid rgba(15,23,42,0.10);
+		background: rgba(255, 255, 255, 0.85);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 	}
 	.pill.warn {
 		background: rgba(254, 226, 226, 0.9);
@@ -1007,11 +1070,17 @@ function backroll() {
 	}
 
 	@media (max-width: 980px) {
-		.shell { grid-template-columns: 1fr; }
-		.left { order: 2; }
+		.shell {
+			grid-template-columns: 1fr;
+		}
+		.left {
+			order: 2;
+		}
 	}
 
-	.left { display: block; }
+	.left {
+		display: block;
+	}
 	.leftSticky {
 		position: sticky;
 		top: 78px;
@@ -1023,7 +1092,7 @@ function backroll() {
 
 	.panel {
 		border-radius: 18px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.92);
 		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
 		padding: 12px;
@@ -1037,20 +1106,33 @@ function backroll() {
 		margin-bottom: 10px;
 	}
 
-	.panelHeader h2 { margin: 0; font-size: 14px; font-weight: 950; }
+	.panelHeader h2 {
+		margin: 0;
+		font-size: 14px;
+		font-weight: 950;
+	}
 
 	.miniBtn {
 		border: 1px solid rgba(15, 23, 42, 0.12);
-		background: rgba(255,255,255,0.9);
+		background: rgba(255, 255, 255, 0.9);
 		border-radius: 12px;
 		padding: 8px 10px;
 		font-size: 12px;
 		font-weight: 900;
 		cursor: pointer;
 	}
-	.miniBtn:disabled { opacity: 0.6; cursor: not-allowed; }
+	.miniBtn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
 
-	.lbList { display: grid; gap: 8px; max-height: 46vh; overflow: auto; padding-right: 2px; }
+	.lbList {
+		display: grid;
+		gap: 8px;
+		max-height: 46vh;
+		overflow: auto;
+		padding-right: 2px;
+	}
 	.lbRow {
 		width: 100%;
 		display: flex;
@@ -1060,24 +1142,68 @@ function backroll() {
 		text-align: left;
 		padding: 10px;
 		border-radius: 14px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(248, 250, 252, 0.9);
 		cursor: pointer;
 	}
-	.lbRow:hover { border-color: rgba(16, 185, 129, 0.35); background: rgba(236, 253, 245, 0.9); }
-	.lbLeft { display: flex; gap: 10px; align-items: center; min-width: 0; }
-	.rank { font-weight: 950; color: rgba(15,23,42,0.75); }
-	.whoTop { font-size: 12px; font-weight: 950; }
-	.whoSub { font-size: 11px; color: rgba(15,23,42,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
-	.lbRight { display: grid; justify-items: end; gap: 2px; }
-	.score { font-weight: 950; font-size: 12px; }
-	.likes { font-size: 11px; color: rgba(15,23,42,0.6); }
+	.lbRow:hover {
+		border-color: rgba(16, 185, 129, 0.35);
+		background: rgba(236, 253, 245, 0.9);
+	}
+	.lbLeft {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		min-width: 0;
+	}
+	.rank {
+		font-weight: 950;
+		color: rgba(15, 23, 42, 0.75);
+	}
+	.whoTop {
+		font-size: 12px;
+		font-weight: 950;
+	}
+	.whoSub {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.55);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 170px;
+	}
+	.lbRight {
+		display: grid;
+		justify-items: end;
+		gap: 2px;
+	}
+	.score {
+		font-weight: 950;
+		font-size: 12px;
+	}
+	.likes {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.6);
+	}
 
-	.hintPanel { background: rgba(255,255,255,0.85); }
-	.hintTitle { font-weight: 950; font-size: 13px; margin-bottom: 6px; }
-	.hintList { margin: 0; padding-left: 18px; font-size: 12px; color: rgba(15,23,42,0.65); }
+	.hintPanel {
+		background: rgba(255, 255, 255, 0.85);
+	}
+	.hintTitle {
+		font-weight: 950;
+		font-size: 13px;
+		margin-bottom: 6px;
+	}
+	.hintList {
+		margin: 0;
+		padding-left: 18px;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.65);
+	}
 
-	.main { min-height: calc(100vh - 80px); }
+	.main {
+		min-height: calc(100vh - 80px);
+	}
 
 	.filters {
 		position: sticky;
@@ -1089,46 +1215,75 @@ function backroll() {
 		gap: 12px;
 		padding: 10px 12px;
 		border-radius: 18px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
-		background: rgba(255,255,255,0.92);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(255, 255, 255, 0.92);
 		box-shadow: 0 14px 40px rgba(15, 23, 42, 0.08);
 		margin-bottom: 12px;
 	}
 
-	.filtersLeft { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
-	.filtersRight { display: flex; gap: 10px; align-items: center; }
+	.filtersLeft {
+		display: flex;
+		gap: 10px;
+		align-items: end;
+		flex-wrap: wrap;
+	}
+	.filtersRight {
+		display: flex;
+		gap: 10px;
+		align-items: center;
+	}
 
-	.fLabel { display: grid; gap: 6px; font-size: 11px; font-weight: 950; color: rgba(15,23,42,0.65); }
-	.fSelect, .fInput {
-		border: 1px solid rgba(15,23,42,0.14);
+	.fLabel {
+		display: grid;
+		gap: 6px;
+		font-size: 11px;
+		font-weight: 950;
+		color: rgba(15, 23, 42, 0.65);
+	}
+	.fSelect,
+	.fInput {
+		border: 1px solid rgba(15, 23, 42, 0.14);
 		border-radius: 14px;
 		padding: 10px 10px;
 		font-size: 12px;
-		background: rgba(255,255,255,0.95);
+		background: rgba(255, 255, 255, 0.95);
 		min-width: 170px;
 	}
-	.fInput { min-width: 220px; }
+	.fInput {
+		min-width: 220px;
+	}
 
 	.fBtn {
-		border: 1px solid rgba(15,23,42,0.12);
-		background: rgba(248,250,252,0.95);
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(248, 250, 252, 0.95);
 		border-radius: 14px;
 		padding: 10px 12px;
 		font-size: 12px;
 		font-weight: 950;
 		cursor: pointer;
 	}
-	.fBtn:disabled { opacity: 0.6; cursor: not-allowed; }
-	.fCount { font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.55); }
+	.fBtn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.fCount {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
 	/* IG feed */
-	.igFeed { display: grid; gap: 14px; padding-right: 6px; }
+	.igFeed {
+		display: grid;
+		gap: 14px;
+		padding-right: 6px;
+	}
 
 	.igCard {
 		border-radius: 18px;
-		border: 1px solid rgba(15, 23, 42, 0.10);
+		border: 1px solid rgba(15, 23, 42, 0.1);
 		background: rgba(255, 255, 255, 0.94);
-		box-shadow: 0 18px 60px rgba(15, 23, 42, 0.10);
+		box-shadow: 0 18px 60px rgba(15, 23, 42, 0.1);
 		overflow: hidden;
 	}
 
@@ -1137,10 +1292,15 @@ function backroll() {
 		align-items: center;
 		justify-content: space-between;
 		padding: 10px 12px;
-		border-bottom: 1px solid rgba(15,23,42,0.06);
+		border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 	}
 
-	.igUser { display: flex; align-items: center; gap: 10px; min-width: 0; }
+	.igUser {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		min-width: 0;
+	}
 	.avatar {
 		width: 34px;
 		height: 34px;
@@ -1151,19 +1311,45 @@ function backroll() {
 		border: 1px solid rgba(59, 130, 246, 0.18);
 		font-weight: 900;
 	}
-	.igUserMeta { min-width: 0; }
-	.igName { font-size: 13px; font-weight: 950; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; }
-	.igSub { font-size: 11px; color: rgba(15,23,42,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-	.igTime { font-size: 11px; color: rgba(15,23,42,0.45); white-space: nowrap; }
+	.igUserMeta {
+		min-width: 0;
+	}
+	.igName {
+		font-size: 13px;
+		font-weight: 950;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 360px;
+	}
+	.igSub {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.55);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+	.igTime {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.45);
+		white-space: nowrap;
+	}
 
-	.igMedia { display: block; width: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; }
+	.igMedia {
+		display: block;
+		width: 100%;
+		padding: 0;
+		border: 0;
+		background: transparent;
+		cursor: pointer;
+	}
 
 	.designGrid {
 		position: relative;
 		width: 100%;
 		aspect-ratio: 1 / 1;
-		border-top: 1px solid rgba(15,23,42,0.06);
-		border-bottom: 1px solid rgba(15,23,42,0.06);
+		border-top: 1px solid rgba(15, 23, 42, 0.06);
+		border-bottom: 1px solid rgba(15, 23, 42, 0.06);
 		background-size: cover;
 		background-position: center;
 		display: grid;
@@ -1178,20 +1364,25 @@ function backroll() {
 		inset: 0;
 		pointer-events: none;
 		background:
-			linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.10) 100%),
+			linear-gradient(180deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.1) 100%),
 			radial-gradient(600px 240px at 20% 10%, rgba(59, 130, 246, 0.16), transparent 60%),
-			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.10), transparent 55%);
+			radial-gradient(600px 240px at 90% 10%, rgba(34, 197, 94, 0.1), transparent 55%);
 	}
-.placed {
+	.placed {
 		z-index: 1;
 		border-radius: 4px;
 		overflow: hidden;
-		background: rgba(255,255,255,0.10);
-		border: 1px solid rgba(255,255,255,0.18);
+		background: rgba(255, 255, 255, 0.1);
+		border: 1px solid rgba(255, 255, 255, 0.18);
 		box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
 		pointer-events: none;
 	}
-	.placed img { width: 100%; height: 100%; display: block; object-fit: cover; }
+	.placed img {
+		width: 100%;
+		height: 100%;
+		display: block;
+		object-fit: cover;
+	}
 
 	.igActions {
 		display: flex;
@@ -1204,30 +1395,56 @@ function backroll() {
 		width: 40px;
 		height: 40px;
 		border-radius: 14px;
-		border: 1px solid rgba(15,23,42,0.10);
-		background: rgba(255,255,255,0.95);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(255, 255, 255, 0.95);
 		cursor: pointer;
 		font-size: 18px;
 		display: grid;
 		place-items: center;
-		box-shadow: 0 12px 24px rgba(15,23,42,0.08);
+		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
 	}
-	.igAction.active { border-color: rgba(16, 185, 129, 0.35); background: rgba(236, 253, 245, 0.92); }
-	.igAction.soft { border-color: rgba(59,130,246,0.22); background: rgba(239,246,255,0.95); }
-	.igAction:disabled { opacity: 0.6; cursor: not-allowed; }
-	.igSpacer { flex: 1; }
+	.igAction.active {
+		border-color: rgba(16, 185, 129, 0.35);
+		background: rgba(236, 253, 245, 0.92);
+	}
+	.igAction.soft {
+		border-color: rgba(59, 130, 246, 0.22);
+		background: rgba(239, 246, 255, 0.95);
+	}
+	.igAction:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.igSpacer {
+		flex: 1;
+	}
 
-	.igMeta { padding: 0 12px 12px; display: grid; gap: 10px; }
-	.igCounts { font-size: 12px; color: rgba(15,23,42,0.65); }
+	.igMeta {
+		padding: 0 12px 12px;
+		display: grid;
+		gap: 10px;
+	}
+	.igCounts {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.65);
+	}
 
 	.igTeacher {
 		border-radius: 14px;
 		padding: 10px;
-		background: rgba(236, 253, 245, 0.70);
+		background: rgba(236, 253, 245, 0.7);
 		border: 1px solid rgba(16, 185, 129, 0.18);
 	}
-	.tTitle { font-weight: 950; font-size: 12px; margin-bottom: 4px; color: rgba(15,23,42,0.75); }
-	.tText { font-size: 12px; color: rgba(15,23,42,0.68); }
+	.tTitle {
+		font-weight: 950;
+		font-size: 12px;
+		margin-bottom: 4px;
+		color: rgba(15, 23, 42, 0.75);
+	}
+	.tText {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.68);
+	}
 
 	.igCommentsLink {
 		border: 0;
@@ -1254,29 +1471,73 @@ function backroll() {
 		color: rgba(185, 28, 28, 1);
 		font-weight: 950;
 	}
-	.state.empty { text-align: center; }
-	.emptyTitle { font-weight: 950; }
-	.emptyText { font-size: 12px; color: rgba(15,23,42,0.55); }
+	.state.empty {
+		text-align: center;
+	}
+	.emptyTitle {
+		font-weight: 950;
+	}
+	.emptyText {
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
-	.skeleton, .skeletonBig {
+	.skeleton,
+	.skeletonBig {
 		height: 12px;
 		border-radius: 999px;
-		background: linear-gradient(90deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.10), rgba(15, 23, 42, 0.06));
+		background: linear-gradient(
+			90deg,
+			rgba(15, 23, 42, 0.06),
+			rgba(15, 23, 42, 0.1),
+			rgba(15, 23, 42, 0.06)
+		);
 		background-size: 200% 100%;
 		animation: shimmer 1.1s infinite linear;
 	}
-	.skeletonBig { height: 160px; border-radius: 18px; }
-	@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+	.skeletonBig {
+		height: 160px;
+		border-radius: 18px;
+	}
+	@keyframes shimmer {
+		0% {
+			background-position: 200% 0;
+		}
+		100% {
+			background-position: -200% 0;
+		}
+	}
 
-	.lbLoading { display: grid; gap: 8px; }
-	.emptySmall { font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.55); }
+	.lbLoading {
+		display: grid;
+		gap: 8px;
+	}
+	.emptySmall {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
-	.sentinel { padding: 8px 0 18px; text-align: center; }
-	.loadingMore { font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.65); }
-	.loadingMore.muted { color: rgba(15,23,42,0.45); }
+	.sentinel {
+		padding: 8px 0 18px;
+		text-align: center;
+	}
+	.loadingMore {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.65);
+	}
+	.loadingMore.muted {
+		color: rgba(15, 23, 42, 0.45);
+	}
 
 	/* focus modal */
-	.focusBackdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 60; }
+	.focusBackdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(15, 23, 42, 0.55);
+		z-index: 60;
+	}
 	.focusModal {
 		position: fixed;
 		z-index: 70;
@@ -1287,24 +1548,60 @@ function backroll() {
 		max-height: 92vh;
 		overflow: auto;
 		border-radius: 22px;
-		border: 1px solid rgba(15,23,42,0.12);
-		background: rgba(255,255,255,0.97);
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(255, 255, 255, 0.97);
 		box-shadow: 0 30px 90px rgba(15, 23, 42, 0.35);
 	}
-	.focusHeader { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid rgba(15,23,42,0.08); }
-	.focusTitle { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-	.chip {
-		display: inline-flex; align-items: center;
-		padding: 6px 10px; border-radius: 999px;
-		font-size: 12px; font-weight: 950;
-		background: rgba(255,255,255,0.90);
-		border: 1px solid rgba(15,23,42,0.10);
+	.focusHeader {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 12px 14px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 	}
-	.chip.soft { color: rgba(15,23,42,0.65); font-weight: 900; }
-	.closeBtn { border: 1px solid rgba(15,23,42,0.12); background: rgba(255,255,255,0.9); border-radius: 12px; padding: 8px 10px; font-weight: 950; cursor: pointer; }
-	.focusStage { padding: 12px; }
-	.focusGrid { aspect-ratio: 1000 / 520; border-radius: 18px; border: 1px solid rgba(15,23,42,0.10); }
-	.focusActions { padding: 0 12px 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+	.focusTitle {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
+		align-items: center;
+	}
+	.chip {
+		display: inline-flex;
+		align-items: center;
+		padding: 6px 10px;
+		border-radius: 999px;
+		font-size: 12px;
+		font-weight: 950;
+		background: rgba(255, 255, 255, 0.9);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+	}
+	.chip.soft {
+		color: rgba(15, 23, 42, 0.65);
+		font-weight: 900;
+	}
+	.closeBtn {
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(255, 255, 255, 0.9);
+		border-radius: 12px;
+		padding: 8px 10px;
+		font-weight: 950;
+		cursor: pointer;
+	}
+	.focusStage {
+		padding: 12px;
+	}
+	.focusGrid {
+		aspect-ratio: 1000 / 520;
+		border-radius: 18px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+	}
+	.focusActions {
+		padding: 0 12px 12px;
+		display: flex;
+		gap: 10px;
+		align-items: center;
+		flex-wrap: wrap;
+	}
 
 	.voteBtn {
 		display: inline-flex;
@@ -1314,20 +1611,41 @@ function backroll() {
 		min-width: 120px;
 		padding: 10px 12px;
 		border-radius: 14px;
-		border: 1px solid rgba(15,23,42,0.12);
-		background: rgba(255,255,255,0.92);
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: rgba(255, 255, 255, 0.92);
 		font-size: 13px;
 		font-weight: 950;
 		cursor: pointer;
-		box-shadow: 0 12px 24px rgba(15,23,42,0.10);
+		box-shadow: 0 12px 24px rgba(15, 23, 42, 0.1);
 	}
-	.voteBtn.active { border-color: rgba(16, 185, 129, 0.35); background: rgba(236, 253, 245, 0.92); }
-	.voteBtn:disabled { opacity: 0.6; cursor: not-allowed; }
-	.focusScore { margin-left: auto; font-weight: 900; color: rgba(15,23,42,0.65); }
-	.focusTeacher { margin: 0 12px 14px; border-radius: 16px; padding: 10px 12px; background: rgba(255, 255, 255, 0.86); border: 1px solid rgba(15, 23, 42, 0.10); }
+	.voteBtn.active {
+		border-color: rgba(16, 185, 129, 0.35);
+		background: rgba(236, 253, 245, 0.92);
+	}
+	.voteBtn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+	.focusScore {
+		margin-left: auto;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.65);
+	}
+	.focusTeacher {
+		margin: 0 12px 14px;
+		border-radius: 16px;
+		padding: 10px 12px;
+		background: rgba(255, 255, 255, 0.86);
+		border: 1px solid rgba(15, 23, 42, 0.1);
+	}
 
 	/* drawer */
-	.drawerBackdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 40; }
+	.drawerBackdrop {
+		position: fixed;
+		inset: 0;
+		background: rgba(15, 23, 42, 0.45);
+		z-index: 40;
+	}
 	.drawer {
 		position: fixed;
 		top: 0;
@@ -1335,32 +1653,123 @@ function backroll() {
 		height: 100vh;
 		width: min(420px, 92vw);
 		background: rgba(255, 255, 255, 0.96);
-		border-left: 1px solid rgba(15, 23, 42, 0.10);
+		border-left: 1px solid rgba(15, 23, 42, 0.1);
 		box-shadow: -18px 0 60px rgba(15, 23, 42, 0.18);
 		z-index: 50;
 		display: grid;
 		grid-template-rows: auto auto 1fr;
 	}
-	.drawerHeader { display: flex; align-items: center; justify-content: space-between; padding: 14px 14px 10px; border-bottom: 1px solid rgba(15, 23, 42, 0.08); }
-	.drawerTitle { font-weight: 950; }
-	.drawerState { padding: 14px; display: grid; gap: 10px; }
-	.drawerState.error { background: rgba(239, 68, 68, 0.06); border-top: 1px solid rgba(239, 68, 68, 0.18); color: rgba(185, 28, 28, 1); font-weight: 950; }
+	.drawerHeader {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 14px 14px 10px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+	}
+	.drawerTitle {
+		font-weight: 950;
+	}
+	.drawerState {
+		padding: 14px;
+		display: grid;
+		gap: 10px;
+	}
+	.drawerState.error {
+		background: rgba(239, 68, 68, 0.06);
+		border-top: 1px solid rgba(239, 68, 68, 0.18);
+		color: rgba(185, 28, 28, 1);
+		font-weight: 950;
+	}
 
-	.commentComposer { padding: 12px 14px; border-bottom: 1px solid rgba(15, 23, 42, 0.08); display: grid; gap: 10px; }
-	.commentInput { width: 100%; resize: none; border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.14); padding: 10px 10px; font-size: 12px; line-height: 1.4; background: rgba(255, 255, 255, 0.92); }
-	.commentInput:focus { outline: none; border-color: rgba(16, 185, 129, 0.45); box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.20); }
+	.commentComposer {
+		padding: 12px 14px;
+		border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+		display: grid;
+		gap: 10px;
+	}
+	.commentInput {
+		width: 100%;
+		resize: none;
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.14);
+		padding: 10px 10px;
+		font-size: 12px;
+		line-height: 1.4;
+		background: rgba(255, 255, 255, 0.92);
+	}
+	.commentInput:focus {
+		outline: none;
+		border-color: rgba(16, 185, 129, 0.45);
+		box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+	}
 
-	.composerRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
-	.composerHint { font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.55); }
+	.composerRow {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.composerHint {
+		font-size: 12px;
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.55);
+	}
 
-	.sendBtn { border-radius: 14px; border: 1px solid rgba(16, 185, 129, 0.45); background: rgba(16, 185, 129, 0.95); color: #fff; font-size: 12px; font-weight: 950; padding: 10px 12px; cursor: pointer; box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22); }
-	.sendBtn:disabled { opacity: 0.6; cursor: not-allowed; box-shadow: none; }
+	.sendBtn {
+		border-radius: 14px;
+		border: 1px solid rgba(16, 185, 129, 0.45);
+		background: rgba(16, 185, 129, 0.95);
+		color: #fff;
+		font-size: 12px;
+		font-weight: 950;
+		padding: 10px 12px;
+		cursor: pointer;
+		box-shadow: 0 12px 24px rgba(16, 185, 129, 0.22);
+	}
+	.sendBtn:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+		box-shadow: none;
+	}
 
-	.commentList { padding: 12px 14px 18px; overflow: auto; display: grid; gap: 10px; }
-	.comment { border-radius: 14px; border: 1px solid rgba(15, 23, 42, 0.10); background: rgba(248, 250, 252, 0.92); padding: 10px; }
-	.commentTop { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-	.name { font-weight: 950; font-size: 12px; display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-	.time { font-size: 11px; color: rgba(15,23,42,0.45); white-space: nowrap; }
-	.text { margin-top: 6px; font-size: 12px; color: rgba(15,23,42,0.70); }
-	.mutedText { font-weight: 900; color: rgba(15,23,42,0.55); }
+	.commentList {
+		padding: 12px 14px 18px;
+		overflow: auto;
+		display: grid;
+		gap: 10px;
+	}
+	.comment {
+		border-radius: 14px;
+		border: 1px solid rgba(15, 23, 42, 0.1);
+		background: rgba(248, 250, 252, 0.92);
+		padding: 10px;
+	}
+	.commentTop {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+	}
+	.name {
+		font-weight: 950;
+		font-size: 12px;
+		display: inline-flex;
+		gap: 8px;
+		align-items: center;
+		flex-wrap: wrap;
+	}
+	.time {
+		font-size: 11px;
+		color: rgba(15, 23, 42, 0.45);
+		white-space: nowrap;
+	}
+	.text {
+		margin-top: 6px;
+		font-size: 12px;
+		color: rgba(15, 23, 42, 0.7);
+	}
+	.mutedText {
+		font-weight: 900;
+		color: rgba(15, 23, 42, 0.55);
+	}
 </style>

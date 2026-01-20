@@ -59,7 +59,7 @@
 	// ---------- form state ----------
 	let name = '';
 	let email = '';
-	let class_id: number | '' = ''; // teacher optional only
+	let class_id: number | '' = ''; 
 	let code = ''; // student required
 	let roleForRegister: 'teacher' = 'teacher';
 
@@ -97,7 +97,7 @@
 				}
 			}
 		} catch {
-			// ignore
+			
 		}
 	});
 
@@ -113,7 +113,7 @@
 		msg = 'Cleared local session.';
 	}
 
-	// (kept if you still use it elsewhere)
+
 	async function resolveClassIdByCode(codeStr: string): Promise<number> {
 		const url = new URL('/api/class-codes/resolve', window.location.origin);
 		url.searchParams.set('code', codeStr);
@@ -301,8 +301,8 @@
 		</div>
 
 	{:else}
-		<h2 class="h">Create account (local only)</h2>
-		<p class="p">Stores in localStorage. No backend.</p>
+		<h2 class="h">Create account </h2>
+		
 
 		<div class="grid">
 			<label class="field">

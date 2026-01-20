@@ -8,7 +8,7 @@
     <div class="w-full flex p-6">
         <div class="w-1/2 flex flex-col items-center gap-4">
             <ProfilePicture />
-            <h2 class="text-xl font-semibold">Marilin Monroe</h2>
+            <h2 class="text-xl font-semibold">Welcome</h2>
         </div>
 
         <GenerateCodeCard />
@@ -20,6 +20,7 @@
             title="Asset overview" 
             buttonName="To asset overview" 
             href="/dashboard/teacher/assets"   
+            imagePath="/bush.png"
         />
 
         <DashboardNavigationCard 
@@ -27,6 +28,7 @@
             title="Print Layout" 
             buttonName="To print layout" 
             href="fcgv"
+            imagePath="/dashboard/OpenBook.png"
         />
 
         <DashboardNavigationCard 
@@ -34,6 +36,7 @@
             title="Student Designs" 
             buttonName="To student designs" 
             href="/dashboard/teacher/overview"
+            imagePath="/dashboard/like.png"
         />
     </div>
 </div>
