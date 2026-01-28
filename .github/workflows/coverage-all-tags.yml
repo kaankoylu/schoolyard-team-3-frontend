@@ -1,0 +1,68 @@
+name: Coverage (all tags)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        tag:
+          - v0.1.0
+          - v2.0.0
+          - v2.0.1
+          - v2.0.2
+          - v3.0
+          - v4.0
+          - v5.0-Final_release
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ matrix.tag }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Unit tests (coverage)
+        run: npm run test:coverage
+
+      - name: Print coverage summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "TAG=${{ matrix.tag }}"
+          if [ -f coverage/coverage-summary.json ]; then
+            node - <<'NODE'
+            const s = require('./coverage/coverage-summary.json').total;
+            console.log(`lines_pct=${s.lines.pct}`);
+            console.log(`statements_pct=${s.statements.pct}`);
+            console.log(`functions_pct=${s.functions.pct}`);
+            console.log(`branches_pct=${s.branches.pct}`);
+            NODE
+          else
+            echo "coverage/coverage-summary.json not found. Files in coverage/:"
+            ls -la coverage || true
+            exit 1
+          fi
+
+      - name: Upload coverage artifact (per tag)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.tag }}
+          path: coverage
+          if-no-files-found: ignore
